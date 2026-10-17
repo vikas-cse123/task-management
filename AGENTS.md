@@ -18,9 +18,12 @@ generic ClickUp clone.
    or invent requirements.
 2. Do not implement the whole app at once. Work in approved, separately tested
    phases (see [docs/07-development-phases.md](./docs/07-development-phases.md)).
-3. **Phases 1–4 (Steps 0–24) are complete and verified. Do not start Phase 5+
-   (WhatsApp notifications, meetings, deployment) without
-   explicit approval.**
+3. **Phases 1–5 (Steps 0–30) are complete and verified locally. Do not start
+   Phase 6+ (meetings, deployment) without explicit approval.** Phase 5 WhatsApp
+   delivery is verified only through a mocked Meta provider; live Meta Cloud API
+   messaging is **blocked** pending credentials/approved templates and must never
+   be enabled or claimed as live without the operator checklist in
+   [docs/phase5-completion-report.md](./docs/phase5-completion-report.md).
 4. Resolve ambiguities by asking; never decide business rules silently. The
    unresolved list is in [docs/decisions.md](./docs/decisions.md) (§22 of the
    spec).

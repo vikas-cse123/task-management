@@ -63,6 +63,22 @@ explicit approval. The authoritative requirement text is in
 - Agenda v6 + `@agendajs/mongo-backend`, separate persistent Node.js worker,
   MongoDB-backed jobs. **Redis is not used** (unless a later approved change
   justifies it).
+- Phase 5 worker jobs: notification dispatch (durable outbox), deadline
+  reminders (due-soon/overdue/escalation) and weekly campaign-review recurrence.
+  Outbox claims use a lease with recovery; retries are bounded with exponential
+  backoff. The worker exposes **no HTTP surface**.
+
+## Notifications (Phase 5)
+
+- **WhatsApp Cloud API** (Meta Graph) via a provider abstraction with a
+  deterministic mock; the provider fails closed without credentials and `mock`
+  is rejected in production.
+- **Transactional outbox + in-app fallback** (MongoDB collections; no Redis, no
+  new dependencies). Webhook verification uses Web Crypto HMAC over the raw
+  request body (`X-Hub-Signature-256`) with a constant-time compare.
+- Credentials (`WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`,
+  `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`) are server-side only;
+  `WHATSAPP_NOTIFICATIONS_ENABLED` is an emergency kill-switch.
 
 ## Testing and quality
 

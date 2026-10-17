@@ -2,13 +2,14 @@ import { MongoBackend } from '@agendajs/mongo-backend';
 import { Agenda } from 'agenda';
 import { workerEnv } from './config/env';
 import { logger } from './lib/logger';
+import { registerJobDefinitions } from './jobs/register';
 
 /**
  * Create the Agenda v6 instance backed by MongoDB.
  *
- * No business jobs are registered in Phase 1. Job definitions for deadline
- * reminders, overdue alerts, escalations and notification retries are added in
- * the approved notification phases.
+ * Job definitions for deadline reminders, escalations, campaign reviews and
+ * notification retries are registered here; the recurring schedules are armed
+ * on start (see `scheduleRecurringJobs`).
  */
 export function createAgenda(): Agenda {
   const agenda = new Agenda({
@@ -19,6 +20,8 @@ export function createAgenda(): Agenda {
     processEvery: workerEnv.WORKER_PROCESS_EVERY,
     maxConcurrency: 20,
   });
+
+  registerJobDefinitions(agenda);
 
   agenda.on('error', (error) => {
     logger.error({ err: error }, 'Agenda error');

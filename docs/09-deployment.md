@@ -71,7 +71,24 @@ Required variables (Phase 1 foundation):
 `DEFAULT_TIMEZONE` (`Asia/Kolkata`) currently lives in
 `packages/shared/src/constants.ts` rather than the environment.
 
-Later phases add WhatsApp Cloud API and webhook-verification variables.
+Phase 5 (WhatsApp notifications) adds server-side-only variables:
+
+| Variable | Purpose |
+| --- | --- |
+| `WHATSAPP_NOTIFICATIONS_ENABLED` | Emergency kill-switch (default `true`; channel still requires DB settings + credentials). |
+| `WHATSAPP_PROVIDER` | `cloud` \| `mock` (`mock` rejected in production). |
+| `WHATSAPP_APP_SECRET` | Verifies the `X-Hub-Signature-256` webhook signature. |
+| `WHATSAPP_VERIFY_TOKEN` | Webhook GET verification token. |
+| `WHATSAPP_PHONE_NUMBER_ID` | Cloud API sender phone number ID. |
+| `WHATSAPP_ACCESS_TOKEN` | Cloud API access token (never logged/frontend). |
+| `WHATSAPP_API_VERSION` | Graph API version (default `v21.0`). |
+| `WHATSAPP_GRAPH_BASE_URL` | Graph base URL (default `https://graph.facebook.com`). |
+
+**Production webhook URL requirement:** the webhook MUST be served over **HTTPS**
+on a public, stable URL (Meta requires TLS); register
+`https://<host>/api/v1/webhooks/whatsapp` and subscribe to message + status
+events. Do not enable the channel until `WHATSAPP_APP_SECRET` and
+`WHATSAPP_VERIFY_TOKEN` are set and the `interscale_*` templates are approved.
 
 ## 7. Security review checklist (Phase 7)
 

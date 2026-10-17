@@ -1,8 +1,10 @@
 import { CLIENT_STATUSES, CLIENT_TEAM_ROLES, hasCapability } from '@interscale/shared';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { MeetingLinkList } from '../components/meetings/MeetingLinkList';
 import { TextField } from '../components/ui/TextField';
 import { useEmployees, useJobRoles } from '../hooks/useEmployees';
+import { useClientMeetings } from '../hooks/useMeetings';
 import { useClientProjects } from '../hooks/useProjects';
 import {
   useAssignClientRole,
@@ -41,6 +43,7 @@ export function ClientDetailPage() {
   const team = useClientTeam(clientId);
   const roles = useClientRoles(clientId);
   const clientProjects = useClientProjects(clientId);
+  const clientMeetings = useClientMeetings(clientId);
   const updateClient = useUpdateClient(clientId);
   const setMember = useSetClientTeamMember(clientId);
   const removeMember = useRemoveClientTeamMember(clientId);
@@ -199,6 +202,22 @@ export function ClientDetailPage() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Meetings</h2>
+          <Link to="/meetings" className="text-xs font-medium text-slate-600 underline">
+            All meetings
+          </Link>
+        </div>
+        <MeetingLinkList
+          meetings={clientMeetings.data}
+          isPending={clientMeetings.isPending}
+          isError={clientMeetings.isError}
+          error={clientMeetings.error}
+          emptyText="No meetings for this client yet."
+        />
       </section>
 
       {canManage ? (

@@ -6,13 +6,15 @@ performance-marketing agency for B2C travel agencies.
 Hierarchy: **Workspace → Client → Project → Task → Subtask**. One agency
 workspace, responsive web app, WhatsApp-driven notifications.
 
-> **Status:** Phase 4 complete and verified (Steps 0–24: docs, foundation,
-> authentication, employees, clients, integration, projects, tasks, subtasks,
-> approvals, screens, Phase 2 verification, dependency engine, auto-progression,
-> auto-assignment, downstream safety, dependency UI, Phase 3 verification,
-> template engine, official template seeds, template/generation API, template UI
-> and wizard, Phase 4 verification). Phase 5+ (WhatsApp notifications, meetings,
-> deployment) requires explicit approval.
+> **Status:** Phase 5 complete and verified locally (Steps 0–30: all of Phases
+> 1–4 plus shared notification domain, notification models/services, task
+> workflow integration, Agenda v6 worker, notification API + web screens,
+> webhook receiver, and full verification/security audit/regression). WhatsApp
+> delivery is exercised through a **mocked Meta provider**; live Meta Cloud API
+> verification is **blocked** pending credentials/approved templates and the
+> production activation checklist. See
+> [`docs/phase5-completion-report.md`](docs/phase5-completion-report.md). Phase 6+
+> (meetings, deployment) requires explicit approval.
 
 ## Documentation
 

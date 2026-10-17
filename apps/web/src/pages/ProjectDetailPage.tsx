@@ -6,9 +6,11 @@ import {
 } from '@interscale/shared';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { MeetingLinkList } from '../components/meetings/MeetingLinkList';
 import { TaskForm, type TaskFormSubmit } from '../components/tasks/TaskForm';
 import { TextField } from '../components/ui/TextField';
 import { useEmployees, useJobRoles } from '../hooks/useEmployees';
+import { useProjectMeetings } from '../hooks/useMeetings';
 import {
   useChangeProjectStatus,
   useProject,
@@ -34,6 +36,7 @@ export function ProjectDetailPage() {
 
   const project = useProject(projectId);
   const activity = useProjectActivity(projectId);
+  const projectMeetings = useProjectMeetings(projectId);
   const projectTasks = useProjectTasks(projectId);
   const projectReviews = useProjectReviews(projectId);
   const updateProject = useUpdateProject(projectId);
@@ -342,6 +345,22 @@ export function ProjectDetailPage() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Meetings</h2>
+          <Link to="/meetings" className="text-xs font-medium text-slate-600 underline">
+            All meetings
+          </Link>
+        </div>
+        <MeetingLinkList
+          meetings={projectMeetings.data}
+          isPending={projectMeetings.isPending}
+          isError={projectMeetings.isError}
+          error={projectMeetings.error}
+          emptyText="No meetings linked to this project yet."
+        />
       </section>
 
       <section className="space-y-3">

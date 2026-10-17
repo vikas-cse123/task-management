@@ -21,6 +21,20 @@ const envSchema = z.object({
   INITIAL_ADMIN_EMAIL: z.string().min(1).optional(),
   INITIAL_ADMIN_NAME: z.string().min(1).optional(),
   INITIAL_ADMIN_PASSWORD: z.string().min(1).optional(),
+  /** Emergency kill-switch for the WhatsApp channel (in-app is unaffected). */
+  WHATSAPP_NOTIFICATIONS_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  /** WhatsApp webhook subscription token (GET verification). */
+  WHATSAPP_VERIFY_TOKEN: z.string().min(1).optional(),
+  /** WhatsApp app secret used to verify the X-Hub-Signature-256 header. */
+  WHATSAPP_APP_SECRET: z.string().min(1).optional(),
+  WHATSAPP_PROVIDER: z.enum(['cloud', 'mock']).default('cloud'),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().min(1).optional(),
+  WHATSAPP_ACCESS_TOKEN: z.string().min(1).optional(),
+  WHATSAPP_API_VERSION: z.string().min(1).default('v21.0'),
+  WHATSAPP_GRAPH_BASE_URL: z.string().min(1).default('https://graph.facebook.com'),
 });
 
 export type Env = z.infer<typeof envSchema>;

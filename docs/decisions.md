@@ -177,6 +177,49 @@ listed separately and must **not** be silently decided.
   notification phase consumes. No WhatsApp delivery, templates, reminders or
   retries exist yet.
 
+## Resolved during Phase 5 (Steps 25–30)
+
+- **Transactional outbox, never in-transaction sends.** Notification intent is
+  written in the same MongoDB transaction as the business change (task
+  assignment/ready/revision/deadline/completion); all provider and network calls
+  happen later in the worker. A WhatsApp/network failure can never roll back a
+  task write.
+- **In-app is unconditional; WhatsApp is opt-in.** Every intent writes an
+  `notificationInbox` row; a `notificationOutbox` row is written only when the
+  channel is enabled **and** the event→template mapping is enabled.
+- **Everything is idempotent.** Unique `eventKey` on the outbox and
+  `{recipientUserId, eventKey}` on the inbox, built from deterministic
+  `build*EventKey` functions, so repeated workflow evaluation and worker restarts
+  never duplicate a message.
+- **Dispatch revalidates live state and suppresses with a reason.** Channel,
+  activation boundary, mapping, consent, E.164 phone, task existence/terminal
+  status, current assignee match and unchanged deadline are re-checked; failures
+  suppress (`channel_disabled`, `template_missing`, `no_recipient`, `no_consent`,
+  `invalid_recipient`, `task_no_longer_actionable`, `deadline_changed`) while the
+  in-app copy remains.
+- **Activation boundary prevents historical floods.** The first enable sets
+  `activatedAt`; records created before it are suppressed. Opt-in never replays
+  historical suppressed messages.
+- **Consent is user-controlled and enforced at dispatch.** Consent/phone live on
+  the Better Auth user; the employee manages them via
+  `POST /me/notification-consent`; opt-out suppresses pending sends and blocks
+  future sends; no consent is ever invented.
+- **Bounded, resilient delivery.** Claim leases with recovery, exponential
+  backoff (base 30 s, cap 30 min) and `NOTIFICATION_MAX_ATTEMPTS = 5` then
+  terminal `failed`; delivery rank is monotonic (a `read` is never regressed).
+- **Webhook security is non-negotiable.** The webhook is mounted with a raw body
+  parser before `express.json()`; GET verifies `hub.verify_token`, POST verifies
+  the `X-Hub-Signature-256` HMAC with a constant-time compare; unknown IDs are
+  ignored with 200.
+- **The worker exposes no HTTP surface.** `apps/worker` runs only Agenda jobs —
+  there are no administration routes to secure.
+- **Provider fails closed.** No credentials ⇒ no live provider; `mock` is
+  rejected in production; `WHATSAPP_NOTIFICATIONS_ENABLED` is an emergency
+  kill-switch and the channel is off by default.
+- **Weekly campaign reviews recur per period.** `campaignReviewSchedule` +
+  `campaignReviewOccurrence` (unique `{projectId, periodKey}`) generate one review
+  per period for `Live` projects and stop for terminal projects.
+
 ## Unresolved — do not invent (see 00 §22)
 
 1. Exact default owner for the Creative Lead/Manager parent video task.
@@ -224,7 +267,22 @@ listed separately and must **not** be silently decided.
   scenarios and security checks) on the isolated `interscale_e2e` database;
   unit/integration totals: shared 14, db 159, api 70 — 0 failed, 0 skipped
   (MongoDB transaction tests executed).
+- Agenda v6 + `@agendajs/mongo-backend` verified in Phase 5: Mongo-backed jobs
+  register and run in a persistent worker; outbox claim uses a lease with
+  recovery; retries are bounded; worker restart does not duplicate events.
+- Phase 5 provider/consent/outbox behavior verified through the deterministic
+  Mock Meta provider; the live Meta Cloud API path is implemented but **blocked**
+  pending credentials and approved templates.
+- Phase 5 E2E: 78/78 green (full Phase 1–4 regression + Phase 5 notification
+  scenarios) on the isolated `interscale_e2e` database; unit/integration totals:
+  shared 39, db 193, api 83 — 0 failed, 0 skipped (transactions executed).
+- Phase 5 20-point security audit clean; two functional integration bugs found
+  and fixed (template-instantiation assignment notifications; session-aware
+  `loadTaskContext`). Report: `docs/phase5-completion-report.md`.
 
 ## Technical verifications still required
 
-- Agenda v6 Mongo backend configuration (notifications step).
+- Live Meta Cloud API end-to-end verification (credentials + approved
+  `interscale_*` templates + HTTPS webhook registration) — see the production
+  activation checklist in `docs/phase5-completion-report.md`.
+- Meeting management (Phase 6) and dashboards/deployment (Phase 7).

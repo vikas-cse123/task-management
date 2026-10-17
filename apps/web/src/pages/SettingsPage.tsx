@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { NotificationSettingsSection } from '../components/settings/NotificationSettingsSection';
 import { TextField } from '../components/ui/TextField';
 import {
   useDepartments,
@@ -185,6 +186,8 @@ export function SettingsPage() {
           await updateJobRole.mutateAsync({ id, patch });
         }}
       />
+
+      <NotificationSettingsSection />
     </div>
   );
 }

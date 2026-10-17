@@ -9,7 +9,13 @@ import { ClientsPage } from '../pages/ClientsPage';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
 import { HomePage } from '../pages/HomePage';
 import { LoginPage } from '../pages/LoginPage';
+import { MeetingDetailPage } from '../pages/MeetingDetailPage';
+import { MeetingsCalendarPage } from '../pages/MeetingsCalendarPage';
+import { MeetingsPage } from '../pages/MeetingsPage';
+import { MyMeetingsPage } from '../pages/MyMeetingsPage';
 import { MyTasksPage } from '../pages/MyTasksPage';
+import { NewMeetingPage } from '../pages/NewMeetingPage';
+import { NotificationsPage } from '../pages/NotificationsPage';
 import { ApprovalsPage } from '../pages/ApprovalsPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { ProfilePage } from '../pages/ProfilePage';
@@ -46,6 +52,12 @@ export const router = createBrowserRouter([
       { path: 'projects/:id', element: <ProjectDetailPage /> },
       { path: 'tasks/:id', element: <TaskDetailPage /> },
       { path: 'my-tasks', element: <MyTasksPage /> },
+      { path: 'meetings', element: <MeetingsPage /> },
+      { path: 'meetings/calendar', element: <MeetingsCalendarPage /> },
+      { path: 'meetings/mine', element: <MyMeetingsPage /> },
+      { path: 'meetings/new', element: <NewMeetingPage /> },
+      { path: 'meetings/:id', element: <MeetingDetailPage /> },
+      { path: 'notifications', element: <NotificationsPage /> },
       { path: 'approvals', element: <ApprovalsPage /> },
       {
         path: 'templates',

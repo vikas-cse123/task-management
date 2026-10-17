@@ -77,6 +77,22 @@ logs; retry handling.
 **Acceptance:** employees receive the correct notifications and retries do not
 produce duplicate messages.
 
+**Status: complete and verified locally (Steps 25-30).** Shared notification
+domain (enums, schemas, WhatsApp signature + provider abstraction, template key
+catalogue); transactional outbox with in-app fallback; task workflow integration
+(assignment, reassignment, ready, revision, deadline, overdue, escalation,
+weekly campaign review); Agenda v6 worker with lease claim/recovery, bounded
+exponential retry and explicit suppression reasons; notification centre, consent
+and Admin settings/logs screens; signature-verified Meta webhook receiver.
+315 unit/integration tests (shared 39, db 193, api 83 - 0 failed, 0 skipped,
+transaction tests executed) and 78 Playwright E2E tests green (full Phase 1-4
+regression + Phase 5 scenarios). WhatsApp flows verified with a **mocked Meta
+provider**; live Meta Cloud API verification is **BLOCKED** pending
+credentials/approved templates. 20-point security audit clean (two integration
+bugs fixed; no exploitable defects). **Phase 5 declared complete. STOP. Phase 6+
+requires explicit approval.** Report:
+[phase5-completion-report.md](./phase5-completion-report.md).
+
 ## Phase 6 — Meetings
 
 **Build:** meeting list/calendar; scheduling; agendas; notes/decisions; action
@@ -174,3 +190,26 @@ end-to-end UAT; AWS EC2 deployment; Nginx; PM2; HTTPS.
    (Phase 1–3 regression + Phase 4 scenarios and security checks); docs
    updated. **Phase 4 declared complete. STOP. Phase 5+ requires explicit
    approval.**
+- **Steps 25–28 (notification domain, models/services, workflow integration,
+  Agenda worker):** complete. Shared event types/schemas and the Meta-signature +
+  provider abstraction; `notificationSettings`, `notificationInbox`,
+  `notificationOutbox`, `notificationAttemptLog`, `campaignReviewSchedule` and
+  `campaignReviewOccurrence` collections; transactional outbox with idempotent
+  event keys; assignment/reassignment/ready/revision/deadline/overdue/escalation
+  and weekly-review intents; Agenda v6 dispatch, deadline-reminder and
+  campaign-review jobs with lease recovery and bounded exponential retry.
+- **Step 29 (notification API + web):** complete. Notification centre and
+  consent endpoints; Admin-only settings, template mappings, stats, logs,
+  integration status and manual retry; signature-verified webhook receiver
+  mounted before JSON parsing; `/notifications`, profile consent and settings
+  screens (desktop + mobile) with unread-count navigation.
+- **Step 30 (verification, audit, regression, docs):** complete. 20-point
+  security audit clean; MongoDB integration tests for outbox, logs, unique keys,
+  task events, scheduling, cancellation, rescheduling, escalations, recurrence,
+  consent, retries, stale handling, concurrent workers, webhook status updates
+  and isolation; 315 unit/integration tests (shared 39, db 193, api 83 — 0
+  failed, 0 skipped) and 78/78 Playwright E2E green (full Phase 1–4 regression +
+  Phase 5 scenarios); quality gates (format, lint, typecheck, build) green; docs
+  updated. WhatsApp verified with a mocked Meta provider; live Meta Cloud API
+  verification **BLOCKED**. **Phase 5 declared complete. STOP. Phase 6+ requires
+  explicit approval.**

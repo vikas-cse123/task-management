@@ -13,6 +13,7 @@ import {
   createTemplateRecord,
   instantiateProjectFromTemplate,
   JobRoleModel,
+  NotificationInboxModel,
   previewProjectFromTemplate,
   ProjectGenerationModel,
   ProjectModel,
@@ -291,6 +292,24 @@ describe.skipIf(!hasTestDatabase)('project generation from template', () => {
 
     const audit = await AuditLogModel.findOne({ action: 'project.generate' }).lean();
     expect(audit?.entityId.toString()).toBe(result.project.id);
+  });
+
+  it('queues an assignment notification for every assigned generated task', async () => {
+    const clientId = await createReadyClient();
+    const templateId = await publishCampaignTemplate('campaign_notify');
+
+    await instantiateProjectFromTemplate(generationInput(clientId, templateId), ACTOR, {
+      directory: directory(),
+    });
+
+    const inbox = await NotificationInboxModel.find().lean();
+    const assignedTasks = await TaskModel.countDocuments({ assignedUserId: { $ne: null } });
+
+    expect(inbox).toHaveLength(assignedTasks);
+    expect(inbox.every((entry) => entry.eventType === 'task.assigned')).toBe(true);
+    expect(new Set(inbox.map((entry) => entry.recipientUserId.toString()))).toEqual(
+      new Set([MARKETER, SCRIPT_WRITER, EDITOR, MANAGER]),
+    );
   });
 
   it('replays the same idempotency key without duplicating the project', async () => {

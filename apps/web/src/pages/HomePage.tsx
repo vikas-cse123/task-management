@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { MeetingsOverview } from '../components/meetings/MeetingsOverview';
 import { FullPageSpinner } from '../components/ui/FullPageSpinner';
 import { useClients } from '../hooks/useClients';
 import { useEmployees, useJobRoles } from '../hooks/useEmployees';
@@ -101,6 +102,8 @@ export function HomePage() {
           />
         </div>
       )}
+
+      <MeetingsOverview isAdmin={isAdmin} />
 
       {!isEmployee && data.workloadByEmployee.length > 0 ? (
         <div className="space-y-3">

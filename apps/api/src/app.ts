@@ -5,15 +5,19 @@ import express, { type Express } from 'express';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 import { AUTH_BASE_PATH, type Auth } from './auth/auth';
+import { env } from './config/env';
 import { logger } from './lib/logger';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { apiRateLimiter } from './middleware/rateLimit';
 import { requestId } from './middleware/requestId';
 import { createV1Router } from './routes/v1';
+import { createWhatsAppWebhookRouter, type WhatsAppWebhookConfig } from './routes/webhooks';
 import { createClientService, type ClientService } from './services/clients';
 import { createDashboardService, type DashboardService } from './services/dashboard';
 import { createEmployeeAdminService, type EmployeeAdminService } from './services/employees';
 import { createGenerationService, type GenerationService } from './services/generation';
+import { createMeetingService, type MeetingService } from './services/meetings';
+import { createNotificationService, type NotificationApiService } from './services/notifications';
 import { createProjectService, type ProjectService } from './services/projects';
 import { createTaskService, type TaskService } from './services/tasks';
 import { createTemplateService, type TemplateService } from './services/templates';
@@ -44,6 +48,12 @@ export interface CreateAppOptions {
   templates?: TemplateService;
   /** Project generation from a published template (Phase 4). */
   generation?: GenerationService;
+  /** Notification center, consent, and Admin administration (Phase 5). */
+  notifications?: NotificationApiService;
+  /** Meeting management (Phase 6). */
+  meetings?: MeetingService;
+  /** WhatsApp webhook verification/handling (Phase 5). */
+  whatsappWebhook?: WhatsAppWebhookConfig;
 }
 
 /**
@@ -65,6 +75,8 @@ export function createApp(options: CreateAppOptions = {}): Express {
   const dashboard = options.dashboard ?? createDashboardService();
   const templates = options.templates ?? createTemplateService();
   const generation = options.generation ?? createGenerationService();
+  const notifications = options.notifications ?? createNotificationService();
+  const meetings = options.meetings ?? createMeetingService();
 
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
@@ -82,6 +94,19 @@ export function createApp(options: CreateAppOptions = {}): Express {
     app.all(`${AUTH_BASE_PATH}/*splat`, toNodeHandler(options.auth));
   }
 
+  // Mount the WhatsApp webhook with a raw body parser *before* `express.json()`
+  // so the X-Hub-Signature-256 header can be verified over the exact bytes.
+  app.use(
+    `${API_PREFIX}/webhooks`,
+    express.raw({ type: '*/*', limit: '1mb' }),
+    createWhatsAppWebhookRouter(
+      options.whatsappWebhook ?? {
+        verifyToken: env.WHATSAPP_VERIFY_TOKEN ?? null,
+        appSecret: env.WHATSAPP_APP_SECRET ?? null,
+      },
+    ),
+  );
+
   app.use(express.json({ limit: '1mb' }));
 
   app.use(
@@ -98,6 +123,8 @@ export function createApp(options: CreateAppOptions = {}): Express {
       dashboard,
       templates,
       generation,
+      notifications,
+      meetings,
     }),
   );
 

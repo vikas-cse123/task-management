@@ -1,11 +1,13 @@
 import { createAgenda } from './agenda';
+import { scheduleRecurringJobs } from './jobs/register';
 import { logger } from './lib/logger';
 
 async function main(): Promise<void> {
   const agenda = createAgenda();
 
   await agenda.start();
-  logger.info('Interscale worker started (no jobs registered in Phase 1)');
+  await scheduleRecurringJobs(agenda);
+  logger.info('Interscale worker started (notification jobs registered)');
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'Shutting down worker');

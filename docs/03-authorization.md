@@ -273,3 +273,56 @@ executed tests (`apps/api/tests/{templates,generation}.test.ts`,
 - **Unauthorized modification of existing generated projects**: generation never
   mutates previously created projects; template edits only affect future
   instantiations (published versions are immutable).
+
+## 16. Phase 5 authorization (notifications)
+
+Matrix source: `docs/00-product-requirements.md` §11. Notifications are
+per-recipient; workspace configuration is Admin-only.
+
+- **Self-service is own-data only.** The notification centre, unread count,
+  read/read-all and `/me/notification-consent` require `requireActiveSession` and
+  are scoped to the actor's own `recipientUserId`; a user can never read or
+  mutate another employee's notifications or consent.
+- **Admin-only administration.** Channel settings, template mappings, statistics,
+  integration status, notification logs and manual retry are guarded by
+  `requireActiveSession` + `requireAdmin()`; Managers and Employees receive 403.
+- **Consent is the employee's own.** Only the employee updates their own
+  `whatsappOptIn`/phone; the system never invents consent, and a Manager cannot
+  consent on an employee's behalf.
+- **Escalations are Manager-scoped.** `task.overdue_escalation` targets only the
+  project's Project Manager (resolved server-side from `ProjectModel.managerId`),
+  never an arbitrary or out-of-scope user.
+- **Provider credentials are server-side only.** `WHATSAPP_*` are read only in
+  API/worker env config, never returned to the SPA.
+- **Webhook is public but verified.** `GET/POST /webhooks/whatsapp` bypass the
+  session guard by design but are protected by the verify token and the
+  `X-Hub-Signature-256` HMAC over the raw body.
+- Existing Phase 1–4 rules still hold: every non-webhook route runs
+  `requireActiveSession`; scope/isolation rules are unchanged.
+
+## 17. Step 30 security audit (Phase 5)
+
+Method: code review of the Phase 5 surface plus executed tests
+(`apps/api/tests/{notifications,webhooks}.test.ts`, `packages/db/test/*`,
+`apps/web/e2e/phase5-notifications.spec.ts`, full 78-test E2E green). The full
+20-point audit is in `docs/phase5-completion-report.md` §21; highlights:
+
+- **Token handling**: server-side only; never in responses, logs or errors.
+- **Webhook signatures**: raw-body HMAC verified with constant-time compare;
+  unsigned/forged requests rejected; unknown IDs ignored with 200; delivery
+  statuses advance-only.
+- **Notification isolation**: centre/read endpoints filter by the actor's own
+  recipient id (no cross-client/cross-user access).
+- **Settings/retry authorization**: Admin-only; retry limited to `failed` records.
+- **Consent**: stored, enforced at dispatch; no invented consent; no sends after
+  opt-out; opt-in does not replay history.
+- **No sends during transactions**: provider calls occur only in the worker
+  dispatch path.
+- **Idempotency / bounded retry**: unique event keys; `NOTIFICATION_MAX_ATTEMPTS`
+  then terminal failure.
+- **No worker HTTP surface**: `apps/worker` exposes no routes to secure.
+- **Activation boundary**: first enable sets `activatedAt`; no historical flood.
+- **No rollback from WhatsApp failure**: messaging is outside the business
+  transaction.
+- Two functional (non-exploitable) integration bugs were found and fixed (see
+  report §26); no new security defects were found.

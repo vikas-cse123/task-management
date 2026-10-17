@@ -5,6 +5,8 @@ import type { ClientService } from '../services/clients';
 import type { DashboardService } from '../services/dashboard';
 import type { EmployeeAdminService } from '../services/employees';
 import type { GenerationService } from '../services/generation';
+import type { MeetingService } from '../services/meetings';
+import type { NotificationApiService } from '../services/notifications';
 import type { ProjectService } from '../services/projects';
 import type { ReferenceDataService } from '../services/reference-data';
 import type { TaskService } from '../services/tasks';
@@ -14,6 +16,8 @@ import { createClientsRouter } from './clients';
 import { createDashboardRouter } from './dashboard';
 import { createGenerationRouter } from './generation';
 import { createMeRouter } from './me';
+import { createMeetingsRouter } from './meetings';
+import { createNotificationsRouter } from './notifications';
 import { createProjectsRouter } from './projects';
 import { createTasksRouter } from './tasks';
 import { createTemplatesRouter } from './templates';
@@ -41,6 +45,10 @@ export interface V1RouterDeps {
   templates?: TemplateService;
   /** Project generation from a published template (Phase 4). */
   generation?: GenerationService;
+  /** Notification center, consent, and Admin administration (Phase 5). */
+  notifications?: NotificationApiService;
+  /** Meeting management (Phase 6). */
+  meetings?: MeetingService;
 }
 
 /**
@@ -96,6 +104,14 @@ export function createV1Router(deps: V1RouterDeps = {}): Router {
 
   if (deps.auth && deps.dashboard) {
     router.use('/dashboard', createDashboardRouter(deps.auth, deps.dashboard));
+  }
+
+  if (deps.auth && deps.notifications) {
+    router.use(createNotificationsRouter(deps.auth, deps.notifications));
+  }
+
+  if (deps.auth && deps.meetings) {
+    router.use(createMeetingsRouter(deps.auth, deps.meetings));
   }
 
   return router;

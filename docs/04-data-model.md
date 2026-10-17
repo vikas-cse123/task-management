@@ -1,4 +1,4 @@
-# 04 — Data Model (Phases 1–4)
+# 04 — Data Model (Phases 1–5)
 
 Authoritative requirement: [00-product-requirements.md](./00-product-requirements.md)
 §16 and §25.4. Phase 1 implements identity, departments, job roles, users,
@@ -313,9 +313,73 @@ the same transaction as the project graph.
 
 Indexes: unique `idempotencyKey`, `{ clientId, createdAt }`.
 
-## 3. Later-phase collections (design-compatible, not implemented yet)
+## 3. Phase 5 collections (notifications)
 
-`meetings`, `meetingActionItems`, `notificationOutbox`, `notificationLogs`.
+### notificationSettings
+
+Singleton workspace channel configuration (one document).
+
+| Field | Notes |
+| --- | --- |
+| `enabled` | WhatsApp channel master switch (default `false`). |
+| `activatedAt` | Set on first enable; records older than this are suppressed. |
+| `sender` | Display sender / phone number id reference. |
+| `templateMappings` | Per-event `{ enabled, templateKey }`. |
+| `dueSoonLeadHours` / `escalationAfterHours` / `reviewIntervalDays` | Defaults `24` / `24` / `7`. |
+| `updatedBy` / `createdAt` / `updatedAt` | Audit + timestamps. |
+
+### notificationInbox
+
+In-app notification (always written, independent of WhatsApp).
+
+| Field | Notes |
+| --- | --- |
+| `recipientUserId` | ObjectId reference to the user. |
+| `eventType` | See the Phase 5 event catalogue. |
+| `eventKey` | Deterministic idempotency key. |
+| `title` / `body` / `link` | Display payload. |
+| `readAt` | Null until read. |
+| `createdAt` / `updatedAt` | Timestamps. |
+
+Indexes: unique `{ recipientUserId, eventKey }`; `{ recipientUserId, createdAt }`;
+`{ recipientUserId, readAt }`.
+
+### notificationOutbox
+
+Durable WhatsApp send intent (transactional outbox).
+
+| Field | Notes |
+| --- | --- |
+| `eventKey` | Globally unique idempotency key. |
+| `recipientUserId` | ObjectId reference. |
+| `eventType` / `templateKey` | Event + mapped Meta template. |
+| `status` | `pending` \| `processing` \| `sent` \| `delivered` \| `read` \| `retry_scheduled` \| `failed` \| `suppressed` \| `cancelled`. |
+| `attemptCount` / `nextAttemptAt` | Retry bookkeeping. |
+| `claimedAt` / `leaseOwner` | Dispatch lease. |
+| `lastError` / `suppressionReason` | Sanitized diagnostics. |
+| `createdAt` / `updatedAt` | Timestamps. |
+
+Indexes: unique `eventKey`; `{ status, nextAttemptAt }`;
+`{ recipientUserId, createdAt }`.
+
+### notificationAttemptLog
+
+One sanitized row per dispatch attempt (no tokens, no full phone numbers).
+
+Indexes: `{ outboxId, attempt }`, `{ createdAt }`.
+
+### campaignReviewSchedule
+
+Per-project weekly review recurrence configuration.
+
+### campaignReviewOccurrence
+
+One row per generated review occurrence; unique `{ projectId, periodKey }`
+prevents duplicates per period.
+
+## 4. Later-phase collections (design-compatible, not implemented yet)
+
+`meetings`, `meetingActionItems`.
 
 Key forward-compatibility decisions:
 
@@ -326,8 +390,10 @@ Key forward-compatibility decisions:
 - `clientRoleAssignments` keeps client membership separate from primary role
   mappings, so automatic assignment can resolve roles without DB redesign.
 - Audit/activity records are append-only and sanitized.
+- Notification collections are **recipient-scoped** and idempotent (unique event
+  keys); the outbox is written in the same transaction as the business change.
 
-## 4. General database rules
+## 5. General database rules
 
 Explicit schemas, schema validation, ObjectId references where applicable,
 appropriate and unique indexes, short transactions, optimistic concurrency where

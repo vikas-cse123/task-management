@@ -52,3 +52,39 @@ export async function revokeUserSessions(
 
   return result.deletedCount ?? 0;
 }
+
+export interface WhatsAppConsentPatch {
+  whatsappNumber: string | null;
+  whatsappOptIn: boolean;
+}
+
+/**
+ * Update a user's own WhatsApp notification consent (Phase 5).
+ *
+ * Self-service only: the number and opt-in are set together, and opting in
+ * stamps `whatsappOptInAt` and marks the source `self_service`. Opting out
+ * clears the timestamp. The consent state is authoritative at dispatch time.
+ */
+export async function updateWhatsAppConsent(
+  userId: string,
+  patch: WhatsAppConsentPatch,
+  options: UserAccountServiceOptions = {},
+): Promise<void> {
+  const id = assertObjectId(userId, 'user');
+  const optIn = patch.whatsappOptIn === true;
+
+  await resolveConnection(options)
+    .collection(BETTER_AUTH_USER_COLLECTION)
+    .updateOne(
+      { _id: new mongoose.Types.ObjectId(id) },
+      {
+        $set: {
+          whatsappNumber: patch.whatsappNumber,
+          whatsappOptIn: optIn,
+          whatsappOptInAt: optIn ? new Date() : null,
+          whatsappOptInSource: optIn ? 'self_service' : null,
+          updatedAt: new Date(),
+        },
+      },
+    );
+}

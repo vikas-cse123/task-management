@@ -90,23 +90,25 @@ against a self-hosted or explicitly provided test instance via
 ## 5. Later-phase checklists
 
 Task/subtask, dependency and template test suites are defined in §19 and are
-executed in Phases 2–4 (see the phase test records in §7–§9). Notification and
-meeting suites run in Phases 5–6. API tests use Supertest; E2E flows use
-Playwright.
+executed in Phases 2–4 (see the phase test records in §7–§10). The notification
+suite runs in Phase 5 (see §10); the meeting suite runs in Phase 6. API tests use
+Supertest; E2E flows use Playwright.
 
 ## 6. Playwright end-to-end procedure (Steps 6, 12, 18)
 
 E2E runs against the API + SPA on an **isolated** database that is rebuilt
 before every run: Phase 1 ended 18/18 green, Phase 2 ended 34/34 green,
-Phase 3 ended 54/54 green, Phase 4 ends 69/69 green (all including full
-regression).
+Phase 3 ended 54/54 green, Phase 4 ended 69/69 green, Phase 5 ends 78/78 green
+(all including full regression).
 
 Spec files (`apps/web/e2e`) cover the Phase 1 scenarios (auth, employees,
 clients, permissions, responsive, workflow, security, settings), the Phase 2
 scenarios (`phase2-*`: projects, tasks, workflow, security, responsive),
 the Phase 3 scenarios (`phase3-*`: dependencies, progression, safety,
-security, UI, responsive, workflow) and the Phase 4 scenarios (`phase4-*`:
-templates, generation, security).
+security, UI, responsive, workflow), the Phase 4 scenarios (`phase4-*`:
+templates, generation, security) and the Phase 5 scenarios (`phase5-*`:
+notification centre, consent, Admin settings, assignment/ready/revision,
+suppression, mobile).
 
 Tests run serially (`workers: 1`) because scenarios share fixture users;
 mutating scenarios use fresh entities. Fixtures expire after one run
@@ -216,3 +218,39 @@ add the flow users the wizard needs (`performanceMarketer`, `scriptWriter`,
 `videoEditor`) with their client memberships; the `manager` fixture is granted
 `projects.create_from_template`. Fixtures expire after one run (passwords
 change), so rebuild before every run (procedure in §6).
+
+## 10. Phase 5 test record (Steps 25–30)
+
+Unit/integration (all executed, 0 skipped; MongoDB transaction tests run
+against the isolated replica set — not skipped): shared 39, db 193
+(notification service, dispatch, jobs, task hooks, deadlines, template
+instantiation, plus Phase 1–4 suites), api 83 (notifications, webhooks, plus
+Phase 1–4 suites). **Total 315 passed, 0 failed, 0 skipped, 0 not executed.**
+
+Phase 5 DB suites cover: outbox persistence, notification logs, unique keys,
+task-event integration, worker scheduling, reminder cancellation,
+rescheduling, escalations, recurrence, consent enforcement, retries, stale
+event handling, concurrent workers, delivery webhook status updates and data
+isolation — using controllable clocks instead of waiting real days. API suites
+cover the notification centre, consent, Admin settings/logs/retry and the
+signature-verified webhook.
+
+E2E (Playwright/Chromium, production preview bundle + isolated
+`interscale_e2e` database, **78/78 green** including the full Phase 1–4
+regression): the Phase 5 scenarios (`apps/web/e2e/phase5-notifications.spec.ts`
+— 9 tests) cover Admin login, notification settings, template mappings, employee
+consent, task assignment, task-ready after dependency completion, correct Video
+Editor recipient, revision notification, missing assignment, blocked-task
+suppression, in-app list, read/unread, failed delivery visibility, worker
+status, due reminder scheduling, overdue, escalation, deadline rescheduling,
+completion suppression, opt-out, unauthorized settings access prevention,
+employee isolation and mobile views.
+
+**Mock vs real provider.** Every WhatsApp send/retry/status flow is exercised
+through the deterministic **Mock Meta provider**; no real employee receives a
+message during tests. Live Meta Cloud API verification is **blocked** pending
+credentials/approved templates.
+
+> Run the DB suite with `VITEST_MAX_FORKS=1` to avoid intermittent worker
+> startup crashes (`0xC0000409`) under host memory pressure; this is an
+> environment constraint, not a test failure.

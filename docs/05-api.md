@@ -199,3 +199,38 @@ as `idempotentReplay: true`; the same key with a different payload returns 409
 `CONFLICT`. Managers generating for an out-of-scope client receive 404 (IDOR
 protection). The response envelope is
 `{ data: { project: { id, name, … }, templateId, templateVersion, taskCount, subtaskCount, dependencyCount, warnings, idempotentReplay } }`.
+
+## 8. Endpoints implemented (Phase 5 — notifications)
+
+Conventions: self-service routes require an active session and are scoped to the
+caller's own notifications/consent; workspace administration is **Admin-only**.
+Zod failures are 422. The webhook is mounted with a raw body parser **before**
+the global `express.json()`.
+
+### Notification centre and consent (active session)
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/api/v1/notifications` | Own notifications; `notificationCenterQuerySchema` (filters + cursor). |
+| GET | `/api/v1/notifications/unread-count` | Own unread count. |
+| POST | `/api/v1/notifications/read-all` | Mark all own as read. |
+| POST | `/api/v1/notifications/:id/read` | Mark one own notification read; 404 if not the caller's. |
+| POST | `/api/v1/me/notification-consent` | Update own WhatsApp number/opt-in (`whatsappConsentInputSchema`). |
+
+### Admin notification administration (Admin only)
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET / PATCH | `/api/v1/notification-settings` | Channel config (enabling sets `activatedAt`). |
+| GET / PATCH | `/api/v1/notification-settings/templates` | Per-event template mappings. |
+| GET | `/api/v1/notification-settings/stats` | Outbox statistics. |
+| GET | `/api/v1/notification-settings/integration` | Provider/channel integration status. |
+| GET | `/api/v1/notification-logs` | Delivery attempt log (sanitized). |
+| POST | `/api/v1/notification-outbox/:id/retry` | Requeue a `failed` record; 404 if none. |
+
+### Webhook (public, verified)
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/api/v1/webhooks/whatsapp` | Echoes `hub.challenge` when the verify token matches. |
+| POST | `/api/v1/webhooks/whatsapp` | Verifies `X-Hub-Signature-256` over the raw body, then advances delivery status; unknown IDs ignored with 200. |

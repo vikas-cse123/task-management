@@ -25,6 +25,7 @@ import { JobRoleModel } from '../models/job-role';
 import { recordAudit } from './audit.service';
 import { isActiveClientMember, listActiveClientIdsForUser } from './client.service';
 import { resolveAssignableEmployee, type EmployeeDirectory } from './employee-directory';
+import { notifyTaskAssignment } from './task-notifications.service';
 
 /**
  * Server-side task administration (Steps 8–10).
@@ -400,6 +401,14 @@ export async function createTaskRecord(
     deps,
   );
 
+  if (input.assignedUserId) {
+    await notifyTaskAssignment(
+      taskId,
+      { recipientUserId: input.assignedUserId, previousAssigneeId: null },
+      { session: deps.session },
+    );
+  }
+
   const created = await TaskModel.findById(document._id)
     .session(deps.session ?? null)
     .lean();
@@ -621,6 +630,14 @@ export async function assignTaskRecord(
     },
     deps,
   );
+
+  if (input.assignedUserId && input.assignedUserId !== previous.assignedUserId) {
+    await notifyTaskAssignment(
+      taskId,
+      { recipientUserId: input.assignedUserId, previousAssigneeId: previous.assignedUserId },
+      { session: deps.session },
+    );
+  }
 
   const updated = await TaskModel.findById(taskId)
     .session(deps.session ?? null)

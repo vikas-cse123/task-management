@@ -8,6 +8,10 @@ import { TaskModel, type TaskDocument } from '../models/task';
 import { recordAudit } from './audit.service';
 import { assertParentCanComplete, recordTaskActivity, toTaskSummary } from './task.service';
 import type { EmployeeDirectory } from './employee-directory';
+import {
+  notifyTaskRevisionRequested,
+  suppressTaskOutstandingNotifications,
+} from './task-notifications.service';
 import { evaluateSuccessors, propagateDowngrade, reevaluateTask } from './workflow.service';
 
 /**
@@ -265,6 +269,9 @@ export async function approveTask(
         { actorId, directory: options.directory },
         { session, connection: options.connection },
       );
+
+      // The task is done: no reminder or escalation is actionable any more.
+      await suppressTaskOutstandingNotifications(saved._id.toString(), { session });
     },
   );
 
@@ -302,6 +309,16 @@ export async function reviseTask(
     { status: 'in_progress' },
     options,
     reason.trim(),
+    async (saved, session) => {
+      if (saved.assignedUserId) {
+        await notifyTaskRevisionRequested(
+          saved._id.toString(),
+          saved.assignedUserId.toString(),
+          reason.trim(),
+          { session },
+        );
+      }
+    },
   );
 
   return summary;
@@ -345,6 +362,8 @@ export async function completeTask(
         { actorId, directory: options.directory },
         { session, connection: options.connection },
       );
+
+      await suppressTaskOutstandingNotifications(saved._id.toString(), { session });
     },
   );
 
@@ -387,6 +406,8 @@ export async function cancelTask(
         { actorId, directory: options.directory },
         { session, connection: options.connection },
       );
+
+      await suppressTaskOutstandingNotifications(saved._id.toString(), { session });
     },
   );
 

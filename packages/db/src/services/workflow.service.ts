@@ -13,6 +13,7 @@ import { evaluatePrerequisites } from './dependency.service';
 import { flagDependencyReview } from './dependency-review.service';
 import type { EmployeeDirectory } from './employee-directory';
 import { recordTaskActivity } from './task.service';
+import { notifyTaskReady } from './task-notifications.service';
 
 /**
  * Automatic workflow progression (Step 14).
@@ -282,6 +283,12 @@ export async function reevaluateTask(
       notes: null,
       session: options.session,
     });
+
+    if (document.assignedUserId) {
+      await notifyTaskReady(taskId, document.assignedUserId.toString(), {
+        session: options.session,
+      });
+    }
 
     return { taskId, action: assigned ? 'assigned_unlocked' : 'unlocked', eventId };
   }

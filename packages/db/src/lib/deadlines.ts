@@ -47,3 +47,12 @@ export function formatIstDate(date: Date): string {
 
   return `${year}-${paddedMonth}-${paddedDay}`;
 }
+
+/** Format a UTC instant as an IST date and time (`YYYY-MM-DD HH:mm`). */
+export function formatIstDateTime(date: Date): string {
+  const shifted = new Date(date.getTime() + IST_OFFSET_MINUTES * MS_PER_MINUTE);
+  const hours = String(shifted.getUTCHours()).padStart(2, '0');
+  const minutes = String(shifted.getUTCMinutes()).padStart(2, '0');
+
+  return `${formatIstDate(date)} ${hours}:${minutes}`;
+}

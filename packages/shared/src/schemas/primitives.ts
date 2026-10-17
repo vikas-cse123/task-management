@@ -32,3 +32,13 @@ export const nonEmptyStringSchema = z.string().trim().min(1);
 export const shortTextSchema = z.string().trim().min(1).max(160);
 
 export const longTextSchema = z.string().trim().max(2000);
+
+/**
+ * A boolean supplied through a query string.
+ *
+ * `z.coerce.boolean()` treats the string `"false"` as `true`, so booleans from
+ * the query string are decoded explicitly.
+ */
+export const zBooleanQuery = z
+  .union([z.boolean(), z.enum(['true', 'false'])])
+  .transform((value) => value === true || value === 'true');

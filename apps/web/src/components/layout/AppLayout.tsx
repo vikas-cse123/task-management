@@ -1,6 +1,8 @@
 import { APP_NAME } from '@interscale/shared';
 import {
+  Bell,
   Briefcase,
+  CalendarDays,
   ClipboardCheck,
   ClipboardList,
   FileText,
@@ -11,10 +13,12 @@ import {
   Settings,
   User,
   Users,
+  Video,
   X,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useUnreadNotificationCount } from '../../hooks/useNotifications';
 import { useRefreshSession, useSession } from '../../hooks/useSession';
 import { signOut } from '../../lib/auth-api';
 
@@ -28,6 +32,7 @@ function navLinkClass({ isActive }: { isActive: boolean }): string {
 export function AppLayout() {
   const { user } = useSession();
   const refresh = useRefreshSession();
+  const unread = useUnreadNotificationCount(user !== null);
   const navigate = useNavigate();
   const [signingOut, setSigningOut] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -64,6 +69,23 @@ export function AppLayout() {
       <NavLink to="/my-tasks" className={navLinkClass} onClick={() => setMenuOpen(false)}>
         <ClipboardList className="h-4 w-4" aria-hidden="true" />
         My Tasks
+      </NavLink>
+      <NavLink to="/meetings" className={navLinkClass} onClick={() => setMenuOpen(false)}>
+        <Video className="h-4 w-4" aria-hidden="true" />
+        Meetings
+      </NavLink>
+      <NavLink to="/meetings/calendar" className={navLinkClass} onClick={() => setMenuOpen(false)}>
+        <CalendarDays className="h-4 w-4" aria-hidden="true" />
+        Calendar
+      </NavLink>
+      <NavLink to="/notifications" className={navLinkClass} onClick={() => setMenuOpen(false)}>
+        <Bell className="h-4 w-4" aria-hidden="true" />
+        <span className="flex-1">Notifications</span>
+        {unread.data && unread.data > 0 ? (
+          <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+            {unread.data > 99 ? '99+' : unread.data}
+          </span>
+        ) : null}
       </NavLink>
       <NavLink to="/approvals" className={navLinkClass} onClick={() => setMenuOpen(false)}>
         <ClipboardCheck className="h-4 w-4" aria-hidden="true" />

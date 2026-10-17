@@ -1,4 +1,5 @@
 import {
+  DEFAULT_REVIEW_INTERVAL_DAYS,
   TEMPLATE_TYPE_TO_PROJECT_TYPE,
   type AssignmentSource,
   type CreativeType,
@@ -28,9 +29,11 @@ import { TaskModel } from '../models/task';
 import { TemplateVersionModel } from '../models/template-version';
 import { TemplateModel } from '../models/template';
 import { recordAudit } from './audit.service';
+import { ensureCampaignReviewSchedule } from './campaign-review.service';
 import { ensureActiveMembership, isActiveClientMember } from './client.service';
 import { resolveAssignableEmployee, type EmployeeDirectory } from './employee-directory';
 import { findProject } from './project.service';
+import { notifyTaskAssignment } from './task-notifications.service';
 import {
   expandTemplateDefinition,
   type ExpandedDependency,
@@ -676,6 +679,21 @@ async function createProjectGraph(
     await ensureActiveMembership(plan.clientId, plan.managerId, actor, 'project manager');
   }
 
+  // A template that declares a recurring weekly-review node starts a per-project
+  // campaign-review schedule, which the worker advances one period at a time.
+  if (plan.nodes.some((node) => node.resolvedKey === 'weekly_review')) {
+    await ensureCampaignReviewSchedule(
+      {
+        projectId: projectId.toString(),
+        clientId: plan.clientId,
+        anchorAt: plan.startAt ?? new Date(),
+        intervalDays: DEFAULT_REVIEW_INTERVAL_DAYS,
+        createdBy: actor,
+      },
+      { session },
+    );
+  }
+
   const taskIdByKey = new Map<string, mongoose.Types.ObjectId>();
   const parents = plan.nodes.filter((node) => node.parentResolvedKey === null);
   const children = plan.nodes.filter((node) => node.parentResolvedKey !== null);
@@ -787,6 +805,18 @@ async function insertTasks(
       taskIdByKey.set(node.resolvedKey, document._id);
     }
   });
+
+  for (const [index, document] of created.entries()) {
+    const node = nodes[index];
+
+    if (node?.assignedUserId) {
+      await notifyTaskAssignment(
+        document._id.toString(),
+        { recipientUserId: node.assignedUserId, previousAssigneeId: null },
+        { session },
+      );
+    }
+  }
 }
 
 function isDuplicateKey(error: unknown): boolean {

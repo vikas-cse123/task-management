@@ -117,3 +117,17 @@ applicable work). Meetings stay hidden until Phase 6.
   prerequisite edges); Validate and Publish operate on the saved draft, so
   content must be saved first. Editor validation errors are shown inline.
 - Meetings remain hidden until Phase 6.
+
+## 10. Step 29 screens (Phase 5 — notifications)
+
+| Screen | Route | Access |
+| --- | --- | --- |
+| Notification centre | `/notifications` | Any active session (own notifications only); read/unread, failed-delivery visibility, mobile layout. |
+| Profile — WhatsApp consent | `/profile` | Any active session; set/clear phone number and opt-in/opt-out. |
+| Settings — Notifications | `/settings` (section) | Admin only; channel enable, sender, template mappings, statistics, delivery logs, integration/worker status, manual retry. |
+
+- The navigation shell shows an unread-notification count (via
+  `hooks/useNotifications.ts`).
+- The centre is recipient-scoped by the API; the UI cannot request another
+  employee's notifications.
+- Meetings screens stay hidden until Phase 6.

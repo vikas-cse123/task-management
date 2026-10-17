@@ -50,6 +50,25 @@ export const AUDIT_ACTIONS = [
   'template.publish',
   'template.archive',
   'project.generate',
+  'notification.settings.update',
+  'notification.template_mapping.update',
+  'notification.consent.update',
+  'notification.dispatch.suppress',
+  'notification.dispatch.retry',
+  'notification.escalation.unresolved',
+  'campaign.review.generate',
+  'meeting.create',
+  'meeting.update',
+  'meeting.owner.update',
+  'meeting.attendees.update',
+  'meeting.reschedule',
+  'meeting.cancel',
+  'meeting.complete',
+  'meeting.notes.update',
+  'meeting.decisions.update',
+  'meeting.action_item.create',
+  'meeting.action_item.update',
+  'meeting.action_item.convert',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
@@ -69,6 +88,12 @@ export const AUDIT_ENTITY_TYPES = [
   'template',
   'template_version',
   'project_generation',
+  'notification_outbox',
+  'notification_setting',
+  'notification_template_mapping',
+  'campaign_review_occurrence',
+  'meeting',
+  'meeting_action_item',
   'user',
 ] as const;
 

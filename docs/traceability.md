@@ -59,14 +59,24 @@ and referenced by tests and commits. Full requirement text lives in
 | Step 22 | Template admin API + atomic idempotent generation API | REQ-TMPL (generation), REQ-API, REQ-SEC, REQ-TEST |
 | Step 23 | Template management screens + project creation wizard | REQ-UI, REQ-TMPL, REQ-TEST |
 | Step 24 | Phase 4 audit, E2E + regression, docs, final report | REQ-SEC, REQ-TEST, REQ-QUAL |
-| Phase 5+ | WhatsApp notifications, meetings, dashboards, deployment | REQ-WA, REQ-MEET, REQ-DASH, REQ-DEPLOY |
+| Step 25 | Shared notification domain: enums, event/outbox types, schemas, WhatsApp signature + provider, template keys | REQ-WA, REQ-DATA, REQ-SEC, REQ-TEST |
+| Step 26 | Notification persistence + service: settings/inbox/outbox/attempt-log models, indexes, enqueue/consent/settings/logs | REQ-WA, REQ-DATA, REQ-SEC, REQ-TEST |
+| Step 27 | Task/workflow event integration: transactional outbox intents + idempotency | REQ-WA, REQ-TASK, REQ-DEP, REQ-SEC, REQ-TEST |
+| Step 28 | Agenda v6 worker: dispatch/deadline/campaign-review jobs, lease recovery, retries | REQ-WORKER, REQ-WA, REQ-TEST |
+| Step 29 | Notification API + web: centre/consent/Admin settings/logs/retry, webhook receiver, screens | REQ-WA, REQ-API, REQ-UI, REQ-SEC, REQ-TEST |
+| Step 30 | Phase 5 audit, integration tests, E2E + regression, quality gates, docs, final report | REQ-SEC, REQ-WA, REQ-WORKER, REQ-TEST, REQ-QUAL |
+| Phase 6+ | Meetings, dashboards, deployment | REQ-MEET, REQ-DASH, REQ-DEPLOY |
 
 ## Status legend
 
 Steps 0–6 (all of Phase 1), Steps 7–12 (all of Phase 2: projects, tasks,
 real subtasks, status engine, approvals, screens, final verification),
 Steps 13–18 (all of Phase 3: dependencies, auto-progression, auto-assignment,
-downstream safety, dependency UI, final verification) and Steps 19–24 (all of
+downstream safety, dependency UI, final verification), Steps 19–24 (all of
 Phase 4: templates, official seeds, generation API, template UI + wizard,
-final verification) are complete and verified. Phase 5+ work has not started
-and requires explicit approval.
+final verification) and Steps 25–30 (all of Phase 5: notification domain,
+persistence + service, workflow integration, Agenda worker, notification API +
+web + webhook, final verification) are complete and verified. Phase 5 WhatsApp
+delivery is verified with a mocked Meta provider; live Meta Cloud API
+verification is blocked pending credentials/approved templates. Phase 6+ work
+has not started and requires explicit approval.
