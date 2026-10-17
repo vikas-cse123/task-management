@@ -135,6 +135,7 @@ describe.skipIf(!hasTestDatabase)('task service', () => {
         referenceUrl: null,
         sourceMeetingId: null,
         confirmCompletedParent: false,
+        autoAssign: false,
       },
       ACTOR,
       { directory: stubDirectory() },
@@ -170,6 +171,7 @@ describe.skipIf(!hasTestDatabase)('task service', () => {
       referenceUrl: null,
       sourceMeetingId: null,
       confirmCompletedParent: false,
+      autoAssign: false,
     };
 
     // Unknown project.
@@ -232,6 +234,7 @@ describe.skipIf(!hasTestDatabase)('task service', () => {
         referenceUrl: null,
         sourceMeetingId: null,
         confirmCompletedParent: false,
+        autoAssign: false,
       },
       ACTOR,
       { directory: stubDirectory() },
@@ -273,6 +276,7 @@ describe.skipIf(!hasTestDatabase)('task service', () => {
         referenceUrl: null,
         sourceMeetingId: null,
         confirmCompletedParent: false,
+        autoAssign: false,
       },
       ACTOR,
       { directory: stubDirectory() },
@@ -295,6 +299,7 @@ describe.skipIf(!hasTestDatabase)('task service', () => {
         referenceUrl: null,
         sourceMeetingId: null,
         confirmCompletedParent: false,
+        autoAssign: false,
       },
       ACTOR,
       { directory: stubDirectory() },
@@ -341,6 +346,7 @@ describe.skipIf(!hasTestDatabase)('task service', () => {
         referenceUrl: null,
         sourceMeetingId: null,
         confirmCompletedParent: false,
+        autoAssign: false,
       },
       ACTOR,
       { directory: stubDirectory() },

@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 export interface E2EAccount {
   email: string;
@@ -55,4 +55,41 @@ export function uniqueName(prefix: string): string {
 
 export function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Open a task detail page deterministically (direct navigation). */
+export async function openTask(page: Page, title: string): Promise<void> {
+  const href = await page
+    .getByRole('link', { name: new RegExp(escapeRegExp(title)) })
+    .first()
+    .getAttribute('href');
+  const id = href?.split('/').pop() ?? '';
+
+  if (!/^[0-9a-f]{24}$/.test(id)) {
+    throw new Error(`Could not resolve task link for ${title}`);
+  }
+
+  await page.goto(href ?? '/');
+  await page.reload();
+}
+
+/** Add a prerequisite through the search-and-pick UI, verifying each step. */
+export async function addPrerequisite(page: Page, title: string): Promise<void> {
+  // Let background refetches settle: interacting mid-fetch has been observed
+  // to coincide with lost form state on task pages.
+  await page.waitForLoadState('networkidle');
+  const search = page.getByLabel('Add prerequisite (same project only)');
+  await search.fill(title);
+  await expect.poll(async () => search.inputValue(), { timeout: 5000 }).toBe(title);
+  await page
+    .locator('li', { hasText: title })
+    .filter({ has: page.getByRole('button', { name: 'Select' }) })
+    .getByRole('button', { name: 'Select' })
+    .click();
+  await expect(page.getByText(`Selected: ${title}`)).toBeVisible();
+  await page.getByRole('button', { name: 'Add dependency' }).click();
+  // Wait for the edge to exist before returning: a subsequent add on the same
+  // page would otherwise have its search text cleared by this add's success
+  // reset racing in flight.
+  await expect(page.locator('li', { hasText: title }).first()).toBeVisible();
 }

@@ -23,13 +23,13 @@ approvals; revisions; My Tasks.
 **Acceptance:** parent tasks contain independently assigned and controlled
 subtasks.
 
-**Status: complete (Steps 7–12).** Projects API/UI with Admin creation,
+**Status: complete (Steps 7-12).** Projects API/UI with Admin creation,
 scoped visibility, manager assignment and status flow; tasks with validated
 assignment, six-status transition engine, mandatory-reason approvals and
 revisions, real one-level subtasks with progress and completion guards; My
 Tasks (TanStack Table), task detail, approval queue, expanded scoped
 dashboard; 153 unit/integration tests and 34 E2E tests green; security audit
-done. **STOP. Phase 3+ requires explicit approval.**
+done. Phase 2 declared complete.
 
 ## Phase 3 — Dependencies and Automatic Assignment
 
@@ -38,6 +38,16 @@ automatic task unlocking; event/audit history; downstream review warnings.
 
 **Acceptance:** approving a Video Ad Script makes the correct Video Editor
 subtask actionable.
+
+**Status: complete (Steps 13-18).** Task-dependency engine (same-project
+edges, self/duplicate/cycle/child-to-parent rejection, per-project
+optimistic graph versioning); transactional auto-progression preserving
+manual blocks; assignment resolver (template hook, designated primary,
+manager) with opt-in auto-assign and recorded provenance; reopen/cancel
+downstream safety with review flags and recorded resolutions; dependency
+section, blockers, needs-assignment, reviews, counts and flags across
+task/project/My Tasks screens; 185 unit/integration tests and 54 E2E tests
+green; security audit done. **STOP. Phase 4+ requires explicit approval.**
 
 ## Phase 4 — Templates
 
@@ -99,11 +109,40 @@ end-to-end UAT; AWS EC2 deployment; Nginx; PM2; HTTPS.
   transactional designated-role assignment, primary-manager handling and
   auditing; `/clients` list and `/clients/:id` detail screens.
 - **Step 6 (navigation shell, dashboard, security audit, E2E, docs, final
-  report):** complete. Responsive sidebar layout with mobile drawer;
-  real-data Overview dashboard; `/profile` and Admin-only `/settings`
-  (reference-data labels) screens; twelve-point API security audit (one fix:
-  removed the unused `express-rate-limit` dependency); Playwright E2E — 12
-  scenarios plus 4 HTTP security checks plus settings/profile coverage, all
-  executed green against the running app on an isolated database; quality
-  gates green; Phase 1 declared complete. **STOP. Phase 2+ requires explicit
-  approval.**
+   report):** complete. Responsive sidebar layout with mobile drawer;
+   real-data Overview dashboard; `/profile` and Admin-only `/settings`
+   (reference-data labels) screens; twelve-point API security audit (one fix:
+   removed the unused `express-rate-limit` dependency); Playwright E2E — 12
+   scenarios plus 4 HTTP security checks plus settings/profile coverage, all
+   executed green against the running app on an isolated database; quality
+   gates green. Phase 1 declared complete.
+- **Steps 7–11 (projects, tasks, subtasks, status engine, screens):**
+  complete. Project model/contracts/service/API/UI with Admin creation,
+  scoped visibility, manager assignment and status flow; task model with
+  validated assignment, activity log and one-level subtasks with progress
+  and completion guards; six-status transition engine with mandatory-reason
+  approvals and revisions; My Tasks (TanStack Table), task detail, approval
+  queue, expanded scoped dashboard, dependency-aware project view.
+- **Step 12 (Phase 2 verification):** complete. Security audit (general
+  rate limiting intentionally deferred; audit flagged one medium),
+  unit/integration (shared 14, db 86, api 53 — 0 failed) and 34/34 E2E
+  green; docs updated; Phase 2 declared complete.
+- **Steps 13–17 (dependency engine, auto-progression, auto-assignment,
+  downstream safety, dependency UI):** complete. `TaskDependency` model
+  with same-project/cycle/child-to-parent rejection and per-project
+  optimistic graph versioning; manual-vs-dependency blocker model;
+  transactional unlocking that preserves manual blocks plus durable
+  deduplicated readiness events; assignment resolver (template hook,
+  designated primary, manager) with opt-in auto-assign and recorded
+  provenance; reopen/cancel downstream safety with review flags and
+  recorded resolutions; dependency section, blockers, needs-assignment,
+  reviews, counts and flags on task/project/My Tasks screens.
+- **Step 18 (Phase 3 verification):** complete. Full security audit
+  (general `/api/v1` rate limiting restored — 1000 req/15 min per IP,
+  proxy-aware, skipped in test env; Penpot/Miro, not Figma, noted as
+  design hand-off); quality gates (format, lint, typecheck, build) green;
+  unit/integration (shared 14, db 113, api 58 — 0 failed, 0 skipped);
+  Playwright E2E 54/54 green on the production preview bundle against the
+  isolated `interscale_e2e` database (Phase 1/2 regression + 30 required
+  scenarios and security checks); docs updated. **Phase 3 declared
+  complete. STOP. Phase 4+ requires explicit approval.**

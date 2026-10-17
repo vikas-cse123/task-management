@@ -1,14 +1,24 @@
 import {
   API_PREFIX,
+  assignmentResolutionSchema,
   dashboardSummarySchema,
+  dependencyLinkSchema,
+  dependencyReviewSchema,
   taskActivitySchema,
+  taskBlockersSchema,
+  taskDependencySchema,
   taskDetailSchema,
   taskRowSchema,
   taskSummarySchema,
+  type AssignmentResolution,
   type CreateSubtaskInput,
   type CreateTaskInput,
   type DashboardSummary,
+  type DependencyLink,
+  type DependencyReview,
   type TaskActivity,
+  type TaskBlockers,
+  type TaskDependency,
   type TaskDetail,
   type TaskRow,
   type TaskSummary,
@@ -167,4 +177,74 @@ export async function listApprovalQueue(): Promise<TaskRow[]> {
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   const data = await apiRequest<unknown>(`${API_PREFIX}/dashboard/summary`);
   return dashboardSummarySchema.parse(data);
+}
+
+export async function listPrerequisites(id: string): Promise<DependencyLink[]> {
+  const data = await apiRequest<unknown>(`${API_PREFIX}/tasks/${id}/dependencies`);
+  return dependencyLinkSchema.array().parse(data);
+}
+
+export async function listDependents(id: string): Promise<DependencyLink[]> {
+  const data = await apiRequest<unknown>(`${API_PREFIX}/tasks/${id}/dependents`);
+  return dependencyLinkSchema.array().parse(data);
+}
+
+export async function addDependency(
+  id: string,
+  predecessorTaskId: string,
+): Promise<TaskDependency> {
+  const data = await apiRequest<unknown>(`${API_PREFIX}/tasks/${id}/dependencies`, {
+    method: 'POST',
+    body: JSON.stringify({ predecessorTaskId }),
+  });
+
+  return taskDependencySchema.parse(data);
+}
+
+export async function removeDependency(
+  id: string,
+  dependencyId: string,
+  reason: string,
+): Promise<void> {
+  await apiRequest<unknown>(`${API_PREFIX}/tasks/${id}/dependencies/${dependencyId}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function getBlockers(id: string): Promise<TaskBlockers> {
+  const data = await apiRequest<unknown>(`${API_PREFIX}/tasks/${id}/blockers`);
+  return taskBlockersSchema.parse(data);
+}
+
+export async function listReviews(id: string): Promise<DependencyReview[]> {
+  const data = await apiRequest<unknown>(`${API_PREFIX}/tasks/${id}/reviews`);
+  return dependencyReviewSchema.array().parse(data);
+}
+
+export async function resolveReview(
+  id: string,
+  reviewId: string,
+  note: string,
+): Promise<DependencyReview> {
+  const data = await apiRequest<unknown>(`${API_PREFIX}/tasks/${id}/reviews/${reviewId}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  });
+
+  return dependencyReviewSchema.parse(data);
+}
+
+export async function previewAssignment(id: string): Promise<AssignmentResolution> {
+  const data = await apiRequest<unknown>(`${API_PREFIX}/tasks/${id}/assignment/candidate`);
+  return assignmentResolutionSchema.parse(data);
+}
+
+export async function resolveAssignment(id: string): Promise<TaskSummary> {
+  const data = await apiRequest<unknown>(`${API_PREFIX}/tasks/${id}/assignment/resolve`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+
+  return taskSummarySchema.parse(data);
 }

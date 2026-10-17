@@ -1,11 +1,13 @@
 import {
   API_PREFIX,
   auditEntrySchema,
+  dependencyReviewSchema,
   projectDetailSchema,
   projectSummarySchema,
   type AuditEntry,
   type ChangeProjectStatusInput,
   type CreateProjectInput,
+  type DependencyReview,
   type ProjectDetail,
   type ProjectSummary,
   type UpdateProjectInput,
@@ -90,4 +92,9 @@ export async function changeProjectStatus(
 export async function listProjectActivity(id: string): Promise<AuditEntry[]> {
   const data = await apiRequest<unknown>(`${API_PREFIX}/projects/${id}/activity`);
   return auditEntrySchema.array().parse(data);
+}
+
+export async function listProjectReviews(projectId: string): Promise<DependencyReview[]> {
+  const data = await apiRequest<unknown>(`${API_PREFIX}/projects/${projectId}/reviews`);
+  return dependencyReviewSchema.array().parse(data);
 }

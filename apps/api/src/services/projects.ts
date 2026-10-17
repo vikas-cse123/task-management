@@ -6,6 +6,7 @@ import {
   hasAssignedWorkInProject,
   isActiveClientMember,
   listEntityActivity,
+  listProjectReviews as dbListProjectReviews,
   listProjects as dbListProjects,
   MongoEmployeeDirectory,
   updateProjectRecord,
@@ -17,6 +18,7 @@ import type {
   AuditEntry,
   ChangeProjectStatusInput,
   CreateProjectInput,
+  DependencyReview,
   ProjectDetail,
   ProjectListQuery,
   ProjectSummary,
@@ -53,6 +55,7 @@ export interface ProjectService {
     input: ChangeProjectStatusInput,
   ): Promise<ProjectSummary>;
   listProjectActivity(actor: UserProfile, id: string): Promise<AuditEntry[]>;
+  listProjectReviews(actor: UserProfile, id: string): Promise<DependencyReview[]>;
 }
 
 function isAdmin(actor: UserProfile): boolean {
@@ -157,6 +160,11 @@ export function createProjectService(
     async listProjectActivity(actor, id) {
       await requireInScope(actor, id);
       return listEntityActivity('project', id);
+    },
+
+    async listProjectReviews(actor, id) {
+      await requireInScope(actor, id);
+      return dbListProjectReviews(id);
     },
   };
 }

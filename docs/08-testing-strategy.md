@@ -93,24 +93,17 @@ Task/subtask, dependency, notification, and meeting test suites are defined in
 §19 and are executed in Phases 2–6. API tests use Supertest; E2E flows use
 Playwright.
 
-## 6. Playwright end-to-end procedure (Step 6)
+## 6. Playwright end-to-end procedure (Steps 6, 12, 18)
 
-E2E runs against the **real** API + SPA on an **isolated** database that is
-rebuilt before every run. Status at Phase 1 completion: **18/18 green**
-(12 scenarios + 4 HTTP security checks + settings/profile coverage).
+E2E runs against the API + SPA on an **isolated** database that is rebuilt
+before every run: Phase 1 ended 18/18 green, Phase 2 ended 34/34 green,
+Phase 3 ends 54/54 green (all including full regression).
 
-Specs (`apps/web/e2e`):
-
-| File | Coverage |
-| --- | --- |
-| `auth.spec.ts` | Scenarios 1 (admin login), 4 (first-login password change), 10 (logout/session). |
-| `employees.spec.ts` | Scenarios 2 (employee creation + one-time password), 3 (multiple job roles). |
-| `clients.spec.ts` | Scenarios 5 (client creation), 6 (team + designated roles), 7 (manager authorized), 8 (manager unauthorized). |
-| `permissions.spec.ts` | Scenario 9 (employee restrictions). |
-| `responsive.spec.ts` | Scenario 11 (mobile drawer, 390×844). |
-| `workflow.spec.ts` | Scenario 12 (Admin → Employee → Client chain). |
-| `security.spec.ts` | Signup disabled, admin paths blocked, 401s, manager create-403/edit-200, IDOR 404s. |
-| `settings.spec.ts` | Reference-data label editing (Admin) + forbidden for others; profile screen. |
+Spec files (`apps/web/e2e`) cover the Phase 1 scenarios (auth, employees,
+clients, permissions, responsive, workflow, security, settings), the Phase 2
+scenarios (`phase2-*`: projects, tasks, workflow, security, responsive) and
+the Phase 3 scenarios (`phase3-*`: dependencies, progression, safety,
+security, UI, responsive, workflow).
 
 Tests run serially (`workers: 1`) because scenarios share fixture users;
 mutating scenarios use fresh entities. Fixtures expire after one run
@@ -121,7 +114,7 @@ mutating scenarios use fresh entities. Fixtures expire after one run
 mongod --dbpath /tmp/mongo-rs-e2e --port 27018 --replSet rs0 --bind_ip 127.0.0.1
 # then, once: replSetInitiate({ _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27018' }] })
 
-# 2. API against the isolated database (port 4000; `dev` = `tsx watch`).
+# 2. API against the isolated database (port 4000).
 MONGODB_URI='mongodb://127.0.0.1:27018/interscale_e2e?directConnection=true' \
 BETTER_AUTH_SECRET='<32+-char-secret>' BETTER_AUTH_URL='http://127.0.0.1:4000' \
 WEB_ORIGIN='http://127.0.0.1:5174' NODE_ENV=test LOG_LEVEL=warn \
@@ -132,8 +125,11 @@ MONGODB_URI='mongodb://127.0.0.1:27018/interscale_e2e?directConnection=true' \
 BETTER_AUTH_SECRET='<same-secret>' E2E_ALLOW=true E2E_API_BASE='http://127.0.0.1:4000' \
   pnpm --filter @interscale/api exec tsx src/scripts/e2e-setup.ts
 
-# 4. SPA on a port that does not collide with other projects (proxies /api).
-pnpm --filter @interscale/web exec vite --port 5174 --strictPort --host 127.0.0.1
+# 4. Production bundle on a dedicated port (proxies /api). NEVER the dev
+# server for E2E: its file watcher reloads the app on Playwright artifact
+# writes and wipes in-progress form state mid-test.
+pnpm --filter @interscale/web build
+pnpm --filter @interscale/web exec vite preview --port 5174 --strictPort --host 127.0.0.1
 
 # 5. Run the suite (baseURL must match step 4).
 pnpm --filter @interscale/web test:e2e
@@ -163,3 +159,28 @@ and unrelated-task isolation, unauthorized approval, mobile tasks/projects,
 session protection — plus HTTP security checks and settings/profile
 coverage. Fixtures extended (`e2e-setup.ts`) with flow members, roles and a
 campaign project; suites rerun from rebuilt fixtures every time.
+
+## 8. Phase 3 test record (Steps 13-18)
+
+Unit/integration (all executed, 0 skipped): shared 14, db 113 (dependency
+6, workflow 8, assignment 5, downstream 8, plus Phase 1-2 suites), api 58
+(tasks 14 with flows/dependencies/assignment/reviews, plus Phase 1-2
+suites).
+
+E2E (Playwright/Chromium, production preview bundle + isolated
+`interscale_e2e` database, 54/54 green including the Phase 1/2 regression):
+the 30 required scenarios - project creation, manager assignment, task
+creation/assignment/priority/deadline, parent + subtasks, My Tasks, start,
+submit, approval visibility, approve, revision, resubmit, progress, blocked
+parent, unrelated isolation, unauthorized approval, mobile, session, plus
+dependency add/view/circular/duplicate, blocked-start, readiness, approval
+unlock, multi-prerequisite gating, auto-assignment, needs-assignment,
+manual preservation, reopen/review/resolve, cancel, removal, graph
+security, cross-client isolation, queue/dashboard refresh and mobile graph
+views.
+
+E2E hardening lessons: run against `vite preview` (the dev watcher reloads
+on artifact writes); rebuild fixtures before every full run (stale
+designations leak across runs); serialize multi-mutation flows (wait for
+each edge); narrow paginated lists with search; always `expect` on HTTP
+setup calls.

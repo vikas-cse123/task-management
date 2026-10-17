@@ -16,6 +16,7 @@ export * from './schemas/pagination';
 export * from './schemas/api';
 export * from './schemas/activity';
 export * from './schemas/dashboard';
+export * from './schemas/dependency';
 export * from './schemas/auth';
 export * from './schemas/user';
 export * from './schemas/employee';

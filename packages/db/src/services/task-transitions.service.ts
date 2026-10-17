@@ -7,6 +7,8 @@ import { ConcurrentModificationError, NotFoundError, ValidationError } from '../
 import { TaskModel, type TaskDocument } from '../models/task';
 import { recordAudit } from './audit.service';
 import { assertParentCanComplete, recordTaskActivity, toTaskSummary } from './task.service';
+import type { EmployeeDirectory } from './employee-directory';
+import { evaluateSuccessors, propagateDowngrade, reevaluateTask } from './workflow.service';
 
 /**
  * Formal task state-transition engine (Step 10).
@@ -28,6 +30,8 @@ export interface TransitionOptions {
   expectedVersion?: number;
   reason?: string | null;
   note?: string | null;
+  /** Employee directory for workflow evaluation (auto-assignment checks). */
+  directory?: EmployeeDirectory;
 }
 
 async function runAtomic<T>(
@@ -87,6 +91,7 @@ async function applyTransition(
   newValue: Record<string, unknown>,
   options: TransitionOptions,
   notes: string | null = null,
+  afterSave?: (document: TaskDocument, session: ClientSession | undefined) => Promise<void>,
 ): Promise<TransitionResult> {
   return runAtomic(options, async (session) => {
     const document = await loadTask(id, session);
@@ -94,7 +99,18 @@ async function applyTransition(
 
     const previous = { status: document.status };
     await mutate(document);
+
+    // The manual block reason only lives on Blocked tasks; any transition
+    // away clears it (dependency blocking never sets it).
+    if (document.status !== 'blocked') {
+      document.manualBlockReason = null;
+    }
+
     await saveChecked(document, session);
+
+    if (afterSave) {
+      await afterSave(document, session);
+    }
 
     const taskId = document._id.toString();
 
@@ -243,6 +259,13 @@ export async function approveTask(
     { status: 'done' },
     options,
     options.note ?? null,
+    async (saved, session) => {
+      await evaluateSuccessors(
+        saved._id.toString(),
+        { actorId, directory: options.directory },
+        { session, connection: options.connection },
+      );
+    },
   );
 
   return summary;
@@ -316,6 +339,13 @@ export async function completeTask(
     { status: 'done' },
     options,
     options.note ?? null,
+    async (saved, session) => {
+      await evaluateSuccessors(
+        saved._id.toString(),
+        { actorId, directory: options.directory },
+        { session, connection: options.connection },
+      );
+    },
   );
 
   return summary;
@@ -348,6 +378,16 @@ export async function cancelTask(
     { status: 'cancelled' },
     options,
     reason.trim(),
+    async (saved, session) => {
+      // A cancelled prerequisite never satisfies dependents: propagate the
+      // impact so nothing unlocks on cancelled work.
+      await propagateDowngrade(
+        saved._id.toString(),
+        `Prerequisite cancelled: ${reason.trim()}`,
+        { actorId, directory: options.directory },
+        { session, connection: options.connection },
+      );
+    },
   );
 
   return summary;
@@ -369,8 +409,11 @@ export async function blockTask(
     actorId,
     'task.block',
     (document) => {
-      requireStatus(document, ['todo', 'in_progress'], 'block this task');
+      // A manual hold may layer on top of dependency blocking: the status
+      // stays Blocked and only the reason is recorded.
+      requireStatus(document, ['todo', 'in_progress', 'blocked'], 'block this task');
       document.status = 'blocked';
+      document.manualBlockReason = reason.trim();
       document.updatedBy = new mongoose.Types.ObjectId(assertObjectId(actorId, 'actor'));
     },
     { status: 'blocked' },
@@ -404,6 +447,15 @@ export async function unblockTask(
     { status: 'todo' },
     options,
     reason.trim(),
+    async (saved, session) => {
+      // Unblocking never bypasses dependencies: reevaluate immediately so a
+      // task with unfinished prerequisites stays dependency-blocked.
+      await reevaluateTask(
+        saved._id.toString(),
+        { actorId, directory: options.directory },
+        { session, connection: options.connection },
+      );
+    },
   );
 
   return summary;
@@ -442,6 +494,16 @@ export async function reopenTask(
     { status: 'in_progress' },
     options,
     reason.trim(),
+    async (saved, session) => {
+      // Reopening a prerequisite invalidates downstream readiness: detect
+      // impacted successors without touching their state or history.
+      await propagateDowngrade(
+        saved._id.toString(),
+        `Prerequisite reopened: ${reason.trim()}`,
+        { actorId, directory: options.directory },
+        { session, connection: options.connection },
+      );
+    },
   );
 
   return summary;

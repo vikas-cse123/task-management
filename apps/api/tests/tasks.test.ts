@@ -39,6 +39,9 @@ const TASK: TaskDetail = {
   sopUrl: null,
   referenceUrl: null,
   sourceMeetingId: null,
+  manualBlockReason: null,
+  autoAssign: false,
+  assignmentSource: null,
   version: 0,
   createdBy: null,
   updatedBy: null,
@@ -109,16 +112,74 @@ function fakeTasks(): TaskService {
             clientName: 'Travel Enfield',
             clientId: '507f1f77bcf86cd7994390d0',
             parentTitle: null,
+            reviewOpen: false,
           },
         ],
         nextCursor: null,
       };
+    },
+    async createDependency() {
+      return {
+        id: '507f1f77bcf86cd7994390e9',
+        projectId: PROJECT_ID,
+        predecessorTaskId: TASK_ID,
+        successorTaskId: TASK_ID,
+        createdBy: null,
+        createdAt: NOW,
+        updatedAt: NOW,
+      };
+    },
+    async listPrerequisites() {
+      return [];
+    },
+    async listDependents() {
+      return [];
+    },
+    async removeDependency() {
+      return { successorId: TASK_ID };
+    },
+    async getBlockers() {
+      return {
+        isBlocked: false,
+        manualReason: null,
+        waitingOn: [],
+        needsAssignment: true,
+        reviewOpen: false,
+      };
+    },
+    async previewAssignment() {
+      return {
+        action: 'needs_manager' as const,
+        employeeId: null,
+        source: null,
+        reason: 'No mapping',
+      };
+    },
+    async resolveAssignment() {
+      return TASK;
     },
     async listApprovalQueue() {
       return { data: [], nextCursor: null };
     },
     async listTaskActivity() {
       return [];
+    },
+    async listReviews() {
+      return [];
+    },
+    async resolveReview() {
+      return {
+        id: '507f1f77bcf86cd7994390ea',
+        taskId: TASK_ID,
+        upstreamTaskId: TASK_ID,
+        reason: 'Reopened upstream',
+        status: 'resolved' as const,
+        resolvedBy: null,
+        resolvedAt: null,
+        resolutionNote: 'Accepted',
+        createdAt: NOW,
+        updatedAt: NOW,
+      };
     },
   };
 }
@@ -159,6 +220,9 @@ function fakeProjects(): ProjectService {
       throw new Error('not implemented in test double');
     },
     async listProjectActivity() {
+      return [];
+    },
+    async listProjectReviews() {
       return [];
     },
   };
@@ -317,5 +381,76 @@ describe('task routes', () => {
     const queue = await agent.get('/api/v1/approvals/queue');
     expect(queue.status).toBe(200);
     expect(queue.body.data).toEqual([]);
+  });
+
+  it('manages dependency edges with validation', async () => {
+    await createTestUser(context.auth, { email: 'admin@test.local', accessLevel: 'Admin' });
+    const app = buildApp(context);
+    const agent = await signIn(app, 'admin@test.local');
+
+    const created = await agent
+      .post(`/api/v1/tasks/${TASK_ID}/dependencies`)
+      .send({ predecessorTaskId: '507f1f77bcf86cd7994390e3' });
+    expect(created.status).toBe(201);
+
+    const invalid = await agent.post(`/api/v1/tasks/${TASK_ID}/dependencies`).send({});
+    expect(invalid.status).toBe(422);
+
+    const prereqs = await agent.get(`/api/v1/tasks/${TASK_ID}/dependencies`);
+    expect(prereqs.status).toBe(200);
+
+    const dependents = await agent.get(`/api/v1/tasks/${TASK_ID}/dependents`);
+    expect(dependents.status).toBe(200);
+
+    const blockers = await agent.get(`/api/v1/tasks/${TASK_ID}/blockers`);
+    expect(blockers.status).toBe(200);
+    expect(blockers.body.data.needsAssignment).toBe(true);
+
+    const removed = await agent
+      .delete(`/api/v1/tasks/${TASK_ID}/dependencies/507f1f77bcf86cd7994390e9`)
+      .send({ reason: 'No longer needed' });
+    expect(removed.status).toBe(200);
+  });
+
+  it('lists and resolves dependency reviews', async () => {
+    await createTestUser(context.auth, { email: 'admin@test.local', accessLevel: 'Admin' });
+    const app = buildApp(context);
+    const agent = await signIn(app, 'admin@test.local');
+
+    const listed = await agent.get(`/api/v1/tasks/${TASK_ID}/reviews`);
+    expect(listed.status).toBe(200);
+
+    const resolved = await agent
+      .post(`/api/v1/tasks/${TASK_ID}/reviews/507f1f77bcf86cd7994390ea/resolve`)
+      .send({ note: 'Accepted the impact' });
+    expect(resolved.status).toBe(200);
+    expect(resolved.body.data.status).toBe('resolved');
+  });
+
+  it('lets employees read the dependency graph (mutations stay server-guarded)', async () => {
+    await createTestUser(context.auth, { email: 'employee@test.local', accessLevel: 'Employee' });
+    const app = buildApp(context);
+    const agent = await signIn(app, 'employee@test.local');
+
+    // Reads are wired for every role; write denials are enforced in the
+    // service layer and covered against the real stack in E2E.
+    const prereqs = await agent.get(`/api/v1/tasks/${TASK_ID}/dependencies`);
+    expect(prereqs.status).toBe(200);
+
+    const blockers = await agent.get(`/api/v1/tasks/${TASK_ID}/blockers`);
+    expect(blockers.status).toBe(200);
+  });
+
+  it('previews and resolves assignment', async () => {
+    await createTestUser(context.auth, { email: 'admin@test.local', accessLevel: 'Admin' });
+    const app = buildApp(context);
+    const agent = await signIn(app, 'admin@test.local');
+
+    const preview = await agent.get(`/api/v1/tasks/${TASK_ID}/assignment/candidate`);
+    expect(preview.status).toBe(200);
+    expect(preview.body.data.action).toBe('needs_manager');
+
+    const resolved = await agent.post(`/api/v1/tasks/${TASK_ID}/assignment/resolve`).send({});
+    expect(resolved.status).toBe(200);
   });
 });

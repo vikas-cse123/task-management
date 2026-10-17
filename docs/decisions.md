@@ -98,6 +98,33 @@ listed separately and must **not** be silently decided.
   v8 is the stable classic API and satisfies the approved stack entry).
 - **E2E serial execution kept** (`workers: 1`) with rebuilt fixtures per run.
 
+## Resolved during Phase 3 (Steps 13–18)
+
+- **General `/api/v1` rate limiting restored** (`express-rate-limit`, 1000 req /
+  15 min per IP, proxy-aware, skipped in `test` env) per the Phase 3 §4
+  instruction; Better Auth keeps stricter auth-route rules. Verified live.
+- **Cycle safety via per-project graph versioning:** edge add/remove bumps
+  `projects.dependencyVersion` inside the same transaction (optimistic
+  concurrency + one retry), so concurrent graph edits serialize without
+  distributed locks.
+- **Manual vs dependency blocking:** `manualBlockReason` on the task plus a
+  derived blocker model; dependency transitions never set or clear manual
+  reasons, and manual unblock reevaluates dependencies immediately.
+- **Auto-assignment is opt-in** (`autoAssign` flag) or explicitly triggered
+  (resolve endpoint); provenance (`manual` / `role_mapping`) recorded in
+  assignment audit payloads; template overrides accepted but reported
+  unresolvable until Phase 4.
+- **Readiness is a durable deduplicated event** (`workflowEvents`, unique
+  per task version); records readiness only, never delivery.
+- **Review flags over silent rewrites:** reopen/cancel propagate impact
+  (To Do → Blocked, rest flagged); resolution records decisions without
+  touching statuses.
+- **TanStack Table v8 pinned** (v9 changed the component API).
+- **E2E runs against `vite preview`** (production bundle): the dev server's
+  file watcher reloaded the app on Playwright artifact writes, wiping form
+  state mid-test; preview has no watcher and no StrictMode double-mounts.
+  Serialized multi-add flows wait for each edge before continuing.
+
 ## Unresolved — do not invent (see 00 §22)
 
 1. Exact default owner for the Creative Lead/Manager parent video task.
@@ -138,6 +165,9 @@ listed separately and must **not** be silently decided.
 - Phase 2 E2E: 34/34 green (Phase 1 regression + 24 required scenarios and
   security checks) on the isolated `interscale_e2e` database; unit/integration
   totals: shared 14, db 86, api 53 — 0 failed, 0 skipped.
+- Phase 3 E2E: 54/54 green (Phase 1/2 regression + 30 required scenarios and
+  security checks) on the isolated `interscale_e2e` database; unit/integration
+  totals: shared 14, db 113, api 58 — 0 failed, 0 skipped.
 
 ## Technical verifications still required
 

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { assignmentSourceSchema } from './dependency';
 import { DEFAULT_TASK_PRIORITY, TASK_PRIORITIES } from '../enums/task-priority';
 import { TASK_STATUSES } from '../enums/task-status';
 import { longTextSchema, objectIdSchema } from './primitives';
@@ -29,6 +30,7 @@ export const createTaskInputSchema = z.object({
   sopUrl: urlSchema.nullable().default(null),
   referenceUrl: urlSchema.nullable().default(null),
   sourceMeetingId: objectIdSchema.nullable().default(null),
+  autoAssign: z.boolean().default(false),
   /** Explicit confirmation when adding a subtask to a completed parent. */
   confirmCompletedParent: z.boolean().default(false),
 });
@@ -59,6 +61,7 @@ export const updateTaskInputSchema = z
     approverId: objectIdSchema.nullable().optional(),
     sopUrl: urlSchema.nullable().optional(),
     referenceUrl: urlSchema.nullable().optional(),
+    autoAssign: z.boolean().optional(),
     expectedVersion: versionSchema,
   })
   .refine((value) => Object.keys(value).length > 0, {
@@ -105,6 +108,7 @@ export const taskListQuerySchema = paginationQuerySchema.extend({
   approvalRequired: z.coerce.boolean().optional(),
   due: taskDueFilterSchema.optional(),
   search: z.string().trim().max(200).optional(),
+  unassignedOnly: z.coerce.boolean().optional(),
 });
 
 export type TaskListQuery = z.infer<typeof taskListQuerySchema>;
@@ -135,6 +139,9 @@ export const taskSummarySchema = z.object({
   sopUrl: z.string().nullable(),
   referenceUrl: z.string().nullable(),
   sourceMeetingId: nullableObjectId,
+  manualBlockReason: z.string().nullable(),
+  autoAssign: z.boolean(),
+  assignmentSource: assignmentSourceSchema.nullable(),
   version: z.number().int().min(0),
   createdBy: z.string().nullable(),
   updatedBy: z.string().nullable(),
@@ -168,9 +175,20 @@ export const taskRowSchema = taskSummarySchema.extend({
   clientName: z.string(),
   clientId: objectIdSchema,
   parentTitle: z.string().nullable(),
+  reviewOpen: z.boolean(),
 });
 
 export type TaskRow = z.infer<typeof taskRowSchema>;
+
+/** Assignment resolution outcome (preview or resolve). */
+export const assignmentResolutionSchema = z.object({
+  action: z.enum(['keep', 'assign', 'needs_manager']),
+  employeeId: objectIdSchema.nullable(),
+  source: assignmentSourceSchema.nullable(),
+  reason: z.string().nullable(),
+});
+
+export type AssignmentResolution = z.infer<typeof assignmentResolutionSchema>;
 
 /** Durable per-task activity entry (user-visible history). */
 export const taskActivitySchema = z.object({

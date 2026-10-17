@@ -107,6 +107,28 @@ export function MyTasksPage() {
         header: 'Approval',
         cell: (info) => (info.getValue() ? 'Required' : '—'),
       }),
+      columnHelper.display({
+        id: 'flags',
+        header: 'Flags',
+        cell: (info) => {
+          const row = info.row.original;
+          const flags: string[] = [];
+
+          if (row.needsAssignment) {
+            flags.push('Needs assignment');
+          }
+
+          if (row.manualBlockReason) {
+            flags.push(`Blocked: ${row.manualBlockReason}`);
+          }
+
+          if (row.reviewOpen) {
+            flags.push('Review required');
+          }
+
+          return flags.length > 0 ? flags.join(' · ') : '—';
+        },
+      }),
     ],
     [],
   );

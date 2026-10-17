@@ -57,11 +57,12 @@ async function createTask(
 }
 
 async function openTask(page: Page, title: string): Promise<void> {
-  await page
+  const href = await page
     .getByRole('link', { name: new RegExp(title) })
     .first()
-    .click();
-  await page.waitForURL(/\/tasks\/[0-9a-f]{24}$/);
+    .getAttribute('href');
+  expect(href).toMatch(/^\/tasks\/[0-9a-f]{24}$/);
+  await page.goto(href ?? '/');
 }
 
 test('scenarios 10–14: employee works, submits, manager approves', async ({ page }) => {
@@ -83,6 +84,7 @@ test('scenarios 10–14: employee works, submits, manager approves', async ({ pa
   // 10. The writer sees their subtask in My Tasks.
   await loginAs(page, employee.email, employee.password);
   await page.goto('/my-tasks');
+  await page.getByLabel('Search').fill(scriptTitle);
   await expect(page.getByRole('link', { name: new RegExp(scriptTitle) })).toBeVisible();
 
   // 11–12. Start work, then submit for approval.
@@ -134,6 +136,7 @@ test('scenarios 15–17: revision cycle and parent progress', async ({ page }) =
 
   await loginAs(page, editor.email, editor.password);
   await page.goto('/my-tasks');
+  await page.getByLabel('Search').fill(editTitle);
   await openTask(page, editTitle);
   await page.getByRole('button', { name: 'Start work' }).click();
   await page.getByRole('button', { name: 'Submit for approval' }).click();
@@ -151,6 +154,7 @@ test('scenarios 15–17: revision cycle and parent progress', async ({ page }) =
   // 16. Editor resubmits; manager approves.
   await loginAs(page, editor.email, editor.password);
   await page.goto('/my-tasks');
+  await page.getByLabel('Search').fill(editTitle);
   await openTask(page, editTitle);
   await expect(page.getByText('In Progress').first()).toBeVisible();
   await page.getByRole('button', { name: 'Submit for approval' }).click();

@@ -5,10 +5,13 @@ import {
   ClientRoleAssignmentModel,
   ClientTeamMemberModel,
   DepartmentModel,
+  DependencyReviewModel,
   JobRoleModel,
   ProjectModel,
   TaskActivityModel,
+  TaskDependencyModel,
   TaskModel,
+  WorkflowEventModel,
 } from '../../src';
 import { hasTestDatabase } from './flags';
 
@@ -49,10 +52,13 @@ export async function ensureIndexes(): Promise<void> {
     ClientRoleAssignmentModel.createIndexes(),
     ClientTeamMemberModel.createIndexes(),
     DepartmentModel.createIndexes(),
+    DependencyReviewModel.createIndexes(),
     JobRoleModel.createIndexes(),
     ProjectModel.createIndexes(),
     TaskActivityModel.createIndexes(),
+    TaskDependencyModel.createIndexes(),
     TaskModel.createIndexes(),
+    WorkflowEventModel.createIndexes(),
   ]);
 }
 

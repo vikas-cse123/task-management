@@ -1,5 +1,6 @@
 import {
   TERMINAL_TASK_STATUSES,
+  type AssignmentSource,
   type AuditAction,
   type CreateSubtaskInput,
   type CreateTaskInput,
@@ -16,6 +17,7 @@ import { getConnection } from '../connection';
 import { assertObjectId } from '../lib/object-id';
 import { ConcurrentModificationError, NotFoundError, ValidationError } from '../lib/errors';
 import { ClientModel } from '../models/client';
+import { DependencyReviewModel } from '../models/dependency-review';
 import { ProjectModel } from '../models/project';
 import { TaskActivityModel } from '../models/task-activity';
 import { TaskModel } from '../models/task';
@@ -96,6 +98,9 @@ interface TaskDocShape {
   sopUrl?: string | null;
   referenceUrl?: string | null;
   sourceMeetingId?: mongoose.Types.ObjectId | null;
+  manualBlockReason?: string | null;
+  autoAssign: boolean;
+  assignmentSource?: 'manual' | 'role_mapping' | 'template_override' | null;
   createdBy?: mongoose.Types.ObjectId | null;
   updatedBy?: mongoose.Types.ObjectId | null;
   __v?: number;
@@ -140,6 +145,9 @@ export function toTaskSummary(doc: TaskDocShape): TaskSummary {
     sopUrl: doc.sopUrl ?? null,
     referenceUrl: doc.referenceUrl ?? null,
     sourceMeetingId: asId(doc.sourceMeetingId),
+    manualBlockReason: typeof doc.manualBlockReason === 'string' ? doc.manualBlockReason : null,
+    autoAssign: doc.autoAssign === true,
+    assignmentSource: doc.assignmentSource ?? null,
     version: typeof doc.__v === 'number' ? doc.__v : 0,
     createdBy: asId(doc.createdBy),
     updatedBy: asId(doc.updatedBy),
@@ -359,6 +367,8 @@ export async function createTaskRecord(
         sopUrl: input.sopUrl,
         referenceUrl: input.referenceUrl,
         sourceMeetingId: input.sourceMeetingId,
+        autoAssign: input.autoAssign,
+        assignmentSource: input.assignedUserId ? 'manual' : null,
         createdBy: new mongoose.Types.ObjectId(assertObjectId(actorId, 'actor')),
         updatedBy: new mongoose.Types.ObjectId(assertObjectId(actorId, 'actor')),
       },
@@ -409,6 +419,7 @@ export interface UpdateTaskPatch {
   priority?: UpdateTaskInput['priority'];
   approvalRequired?: boolean;
   approverId?: string | null;
+  autoAssign?: boolean;
 }
 
 /** Edit task fields (status and assignee have dedicated flows). */
@@ -474,6 +485,7 @@ export async function updateTaskRecord(
     approverId: document.approverId?.toString() ?? null,
     sopUrl: document.sopUrl,
     referenceUrl: document.referenceUrl,
+    autoAssign: document.autoAssign,
   };
 
   if (input.title !== undefined) document.title = input.title;
@@ -486,6 +498,7 @@ export async function updateTaskRecord(
   if (input.dueAt !== undefined) document.dueAt = toDate(input.dueAt, 'due date');
   if (input.priority !== undefined) document.priority = input.priority;
   if (input.approvalRequired !== undefined) document.approvalRequired = input.approvalRequired;
+  if (input.autoAssign !== undefined) document.autoAssign = input.autoAssign;
   if (input.approverId !== undefined) {
     document.approverId = input.approverId ? new mongoose.Types.ObjectId(input.approverId) : null;
   }
@@ -525,6 +538,7 @@ export async function updateTaskRecord(
         priority: summary.priority,
         approvalRequired: summary.approvalRequired,
         approverId: summary.approverId,
+        autoAssign: summary.autoAssign,
       },
     },
     deps,
@@ -545,6 +559,7 @@ export async function assignTaskRecord(
   actorId: string,
   deps: TaskServiceDeps,
   expectedVersion?: number,
+  source: AssignmentSource = 'manual',
 ): Promise<TaskSummary> {
   void resolveConnection(deps);
 
@@ -579,6 +594,7 @@ export async function assignTaskRecord(
   document.assignedJobRoleId = input.assignedJobRoleId
     ? new mongoose.Types.ObjectId(input.assignedJobRoleId)
     : null;
+  document.assignmentSource = input.assignedUserId ? source : null;
   document.updatedBy = new mongoose.Types.ObjectId(assertObjectId(actorId, 'actor'));
 
   try {
@@ -600,6 +616,7 @@ export async function assignTaskRecord(
       newValue: {
         assignedUserId: input.assignedUserId,
         assignedJobRoleId: input.assignedJobRoleId,
+        source,
       },
     },
     deps,
@@ -677,6 +694,11 @@ export async function listTasks(
 
   if (query.search && query.search.length > 0) {
     filter.title = { $regex: escapeRegExp(query.search), $options: 'i' };
+  }
+
+  if (query.unassignedOnly === true) {
+    filter.assignedUserId = null;
+    filter.status = { $nin: ['done', 'cancelled'] };
   }
 
   if (scope.kind === 'member' || query.clientId) {
@@ -942,6 +964,7 @@ export interface EnrichedTaskRow {
   clientName: string;
   clientId: string;
   parentTitle: string | null;
+  reviewOpen: boolean;
 }
 
 async function enrichTasks(
@@ -975,6 +998,17 @@ async function enrichTasks(
   const clientById = new Map(clients.map((client) => [client._id.toString(), client]));
   const parentById = new Map(parents.map((parent) => [parent._id.toString(), parent]));
 
+  const reviewTaskIds = new Set(
+    (
+      await DependencyReviewModel.find({
+        taskId: { $in: summaries.map((task) => new mongoose.Types.ObjectId(task.id)) },
+        status: 'open',
+      })
+        .select({ taskId: 1 })
+        .lean()
+    ).map((review) => review.taskId.toString()),
+  );
+
   return summaries.map((task) => {
     const project = projectById.get(task.projectId);
     const client = project ? clientById.get(project.clientId.toString()) : undefined;
@@ -986,6 +1020,7 @@ async function enrichTasks(
       clientName: client?.name ?? 'Unknown client',
       clientId: project?.clientId.toString() ?? '',
       parentTitle: parent?.title ?? null,
+      reviewOpen: reviewTaskIds.has(task.id),
     };
   });
 }
@@ -1175,6 +1210,8 @@ export async function createSubtaskRecord(
         sopUrl: input.sopUrl,
         referenceUrl: input.referenceUrl,
         sourceMeetingId: input.sourceMeetingId,
+        autoAssign: input.autoAssign,
+        assignmentSource: input.assignedUserId ? 'manual' : null,
         createdBy: new mongoose.Types.ObjectId(assertObjectId(actorId, 'actor')),
         updatedBy: new mongoose.Types.ObjectId(assertObjectId(actorId, 'actor')),
       },

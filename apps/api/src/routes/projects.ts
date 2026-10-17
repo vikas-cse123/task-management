@@ -113,5 +113,18 @@ export function createProjectsRouter(auth: Auth, service: ProjectService): Route
     }),
   );
 
+  router.get(
+    '/:id/reviews',
+    ...session,
+    asyncHandler(async (req, res) => {
+      const reviews = await service.listProjectReviews(
+        actor(req),
+        pathParam(req.params.id, 'project'),
+      );
+
+      res.status(200).json({ data: reviews });
+    }),
+  );
+
   return router;
 }

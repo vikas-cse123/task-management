@@ -1,17 +1,26 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreateSubtaskInput, CreateTaskInput, UpdateTaskInput } from '@interscale/shared';
 import {
+  addDependency,
   assignTask,
   createSubtask,
   createTask,
+  getBlockers,
   getDashboardSummary,
   getTask,
   listApprovalQueue,
+  listDependents,
   listMyTasks,
+  listPrerequisites,
   listProjectTasks,
+  listReviews,
   listSubtasks,
   listTaskActivity,
   listTasks,
+  previewAssignment,
+  removeDependency,
+  resolveAssignment,
+  resolveReview,
   taskFlow,
   updateTask,
   type MyTasksFilters,
@@ -187,5 +196,108 @@ export function useDashboardSummary(enabled = true) {
     queryFn: getDashboardSummary,
     enabled,
     retry: false,
+  });
+}
+
+function dependencyKeys(id: string) {
+  return [
+    ['tasks', id, 'dependencies'],
+    ['tasks', id, 'dependents'],
+    ['tasks', id, 'blockers'],
+    ['tasks', id, 'reviews'],
+  ] as const;
+}
+
+function invalidateGraph(queryClient: ReturnType<typeof useQueryClient>, id: string) {
+  invalidateTask(queryClient, id);
+
+  for (const key of dependencyKeys(id)) {
+    void queryClient.invalidateQueries({ queryKey: key });
+  }
+
+  void queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+  void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+}
+
+export function usePrerequisites(id: string | undefined) {
+  return useQuery({
+    queryKey: id ? ['tasks', id, 'dependencies'] : ['tasks', 'missing', 'dependencies'],
+    queryFn: () => listPrerequisites(id ?? ''),
+    enabled: Boolean(id),
+    retry: false,
+  });
+}
+
+export function useDependents(id: string | undefined) {
+  return useQuery({
+    queryKey: id ? ['tasks', id, 'dependents'] : ['tasks', 'missing', 'dependents'],
+    queryFn: () => listDependents(id ?? ''),
+    enabled: Boolean(id),
+    retry: false,
+  });
+}
+
+export function useBlockers(id: string | undefined) {
+  return useQuery({
+    queryKey: id ? ['tasks', id, 'blockers'] : ['tasks', 'missing', 'blockers'],
+    queryFn: () => getBlockers(id ?? ''),
+    enabled: Boolean(id),
+    retry: false,
+  });
+}
+
+export function useReviews(id: string | undefined) {
+  return useQuery({
+    queryKey: id ? ['tasks', id, 'reviews'] : ['tasks', 'missing', 'reviews'],
+    queryFn: () => listReviews(id ?? ''),
+    enabled: Boolean(id),
+    retry: false,
+  });
+}
+
+export function useAddDependency(id: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (predecessorTaskId: string) => addDependency(id, predecessorTaskId),
+    onSuccess: () => invalidateGraph(queryClient, id),
+  });
+}
+
+export function useRemoveDependency(id: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ dependencyId, reason }: { dependencyId: string; reason: string }) =>
+      removeDependency(id, dependencyId, reason),
+    onSuccess: () => invalidateGraph(queryClient, id),
+  });
+}
+
+export function useResolveReview(id: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ reviewId, note }: { reviewId: string; note: string }) =>
+      resolveReview(id, reviewId, note),
+    onSuccess: () => invalidateGraph(queryClient, id),
+  });
+}
+
+export function useAssignmentCandidate(id: string | undefined) {
+  return useQuery({
+    queryKey: id ? ['tasks', id, 'assignment', 'candidate'] : ['tasks', 'missing', 'candidate'],
+    queryFn: () => previewAssignment(id ?? ''),
+    enabled: Boolean(id),
+    retry: false,
+  });
+}
+
+export function useResolveAssignment(id: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => resolveAssignment(id),
+    onSuccess: () => invalidateGraph(queryClient, id),
   });
 }

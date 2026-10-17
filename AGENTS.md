@@ -18,8 +18,8 @@ generic ClickUp clone.
    or invent requirements.
 2. Do not implement the whole app at once. Work in approved, separately tested
    phases (see [docs/07-development-phases.md](./docs/07-development-phases.md)).
-3. **Phases 1–2 (Steps 0–12) are complete and verified. Do not start Phase 3+
-   (dependencies, templates, WhatsApp, meetings, deployment) without
+3. **Phases 1–3 (Steps 0–18) are complete and verified. Do not start Phase 4+
+   (templates, WhatsApp, meetings, deployment) without
    explicit approval.**
 4. Resolve ambiguities by asking; never decide business rules silently. The
    unresolved list is in [docs/decisions.md](./docs/decisions.md) (§22 of the

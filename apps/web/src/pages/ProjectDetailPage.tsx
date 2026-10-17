@@ -13,6 +13,7 @@ import {
   useChangeProjectStatus,
   useProject,
   useProjectActivity,
+  useProjectReviews,
   useUpdateProject,
 } from '../hooks/useProjects';
 import { useCreateTask, useProjectTasks } from '../hooks/useTasks';
@@ -34,6 +35,7 @@ export function ProjectDetailPage() {
   const project = useProject(projectId);
   const activity = useProjectActivity(projectId);
   const projectTasks = useProjectTasks(projectId);
+  const projectReviews = useProjectReviews(projectId);
   const updateProject = useUpdateProject(projectId);
   const changeStatus = useChangeProjectStatus(projectId);
   const createTask = useCreateTask(projectId);
@@ -289,6 +291,9 @@ export function ProjectDetailPage() {
             {' · '}
             {(projectTasks.data ?? []).filter((task) => task.needsAssignment).length} need
             assignment
+            {(projectReviews.data ?? []).length > 0
+              ? ` · ${projectReviews.data?.length} need dependency review`
+              : ''}
           </p>
         ) : null}
 

@@ -40,6 +40,9 @@ export interface Task {
   sopUrl: string | null;
   referenceUrl: string | null;
   sourceMeetingId: Types.ObjectId | null;
+  manualBlockReason: string | null;
+  autoAssign: boolean;
+  assignmentSource: 'manual' | 'role_mapping' | 'template_override' | null;
   createdBy: Types.ObjectId;
   updatedBy: Types.ObjectId;
   createdAt: Date;
@@ -88,6 +91,13 @@ export const taskSchema = new Schema<Task>(
     sopUrl: { type: String, default: null, maxlength: 2000 },
     referenceUrl: { type: String, default: null, maxlength: 2000 },
     sourceMeetingId: { type: Schema.Types.ObjectId, default: null },
+    manualBlockReason: { type: String, default: null, maxlength: 2000 },
+    autoAssign: { type: Boolean, required: true, default: false },
+    assignmentSource: {
+      type: String,
+      enum: ['manual', 'role_mapping', 'template_override'],
+      default: null,
+    },
     createdBy: { type: Schema.Types.ObjectId, ref: BETTER_AUTH_USER_MODEL, required: true },
     updatedBy: { type: Schema.Types.ObjectId, ref: BETTER_AUTH_USER_MODEL, required: true },
   },

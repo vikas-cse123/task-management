@@ -47,11 +47,18 @@ and referenced by tests and commits. Full requirement text lives in
 | Step 10 | Status engine + approvals: transitions/queue/concurrency/tests | REQ-TASK (workflow), REQ-SEC, REQ-TEST |
 | Step 11 | Screens: My Tasks/Projects/Task detail/Approvals/dashboard/nav | REQ-UI, REQ-DASH (Phase 2 subset), REQ-TEST |
 | Step 12 | Phase 2 audit, 24-scenario E2E + regression, docs, final report | REQ-SEC, REQ-TEST, REQ-QUAL |
-| Phase 3+ | Dependencies, templates, WhatsApp, meetings, deployment | REQ-DEP, REQ-TMPL, REQ-WA, REQ-MEET, REQ-DASH, REQ-DEPLOY |
+| Step 13 | Dependency engine: model/cycle/concurrency/API/tests | REQ-DEP (graph), REQ-API, REQ-SEC, REQ-TEST |
+| Step 14 | Auto-progression: evaluation/ready events/idempotency/tests | REQ-DEP (unlocking), REQ-TEST |
+| Step 15 | Auto-assignment: resolver/precedence/provenance/API/tests | REQ-DEP (assignment), REQ-API, REQ-TEST |
+| Step 16 | Downstream safety: review flags/reopen/cancel/removal/tests | REQ-DEP (safety), REQ-SEC, REQ-TEST |
+| Step 17 | Dependency UI: section/dialogs/reasons/counts/flags | REQ-UI, REQ-DASH (Phase 3 subset), REQ-TEST |
+| Step 18 | Phase 3 audit, 30-scenario E2E + regression, docs, final report | REQ-SEC, REQ-TEST, REQ-QUAL |
+| Phase 4+ | Templates, WhatsApp, meetings, deployment | REQ-TMPL, REQ-WA, REQ-MEET, REQ-DASH, REQ-DEPLOY |
 
 ## Status legend
 
-Steps 0–6 (all of Phase 1) and Steps 7–12 (all of Phase 2: projects, tasks,
-real subtasks, status engine, approvals, screens, final verification) are
-complete and verified. Phase 3+ work has not started and requires explicit
-approval.
+Steps 0–6 (all of Phase 1), Steps 7–12 (all of Phase 2: projects, tasks,
+real subtasks, status engine, approvals, screens, final verification) and
+Steps 13–18 (all of Phase 3: dependencies, auto-progression, auto-assignment,
+downstream safety, dependency UI, final verification) are complete and
+verified. Phase 4+ work has not started and requires explicit approval.

@@ -7,6 +7,7 @@ import {
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { TaskForm, type TaskFormSubmit } from '../components/tasks/TaskForm';
+import { DependenciesSection } from '../components/tasks/DependenciesSection';
 import { TextField } from '../components/ui/TextField';
 import { useEmployees, useJobRoles } from '../hooks/useEmployees';
 import {
@@ -273,6 +274,12 @@ export function TaskDetailPage() {
         userId={user?.id ?? ''}
         isAssignee={user?.id === current.assignedUserId}
         isApprover={Boolean(user?.id) && user?.id === current.approverId}
+        canManage={canManage}
+      />
+
+      <DependenciesSection
+        taskId={current.id}
+        projectId={current.projectId}
         canManage={canManage}
       />
 

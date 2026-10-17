@@ -27,6 +27,7 @@ export interface TaskFormSubmit {
   approverId: string | null;
   sopUrl: string | null;
   referenceUrl: string | null;
+  autoAssign: boolean;
 }
 
 interface TaskFormProps {
@@ -65,6 +66,7 @@ export function TaskForm({
   const [approverId, setApproverId] = useState('');
   const [sopUrl, setSopUrl] = useState('');
   const [referenceUrl, setReferenceUrl] = useState('');
+  const [autoAssign, setAutoAssign] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
@@ -82,6 +84,7 @@ export function TaskForm({
         approverId: approverId.trim() === '' ? null : approverId.trim(),
         sopUrl: emptyToNull(sopUrl),
         referenceUrl: emptyToNull(referenceUrl),
+        autoAssign,
       },
       confirmed,
     );
@@ -206,6 +209,16 @@ export function TaskForm({
           hint="Must be an active member of the client team."
         />
       ) : null}
+
+      <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+        <input
+          type="checkbox"
+          checked={autoAssign}
+          onChange={(event) => setAutoAssign(event.target.checked)}
+          className="h-4 w-4"
+        />
+        Auto-assign from the client role mapping when unassigned
+      </label>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <TextField

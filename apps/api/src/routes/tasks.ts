@@ -1,7 +1,10 @@
 import {
   assignTaskInputSchema,
+  createDependencyInputSchema,
   createSubtaskInputSchema,
   createTaskInputSchema,
+  removeDependencyInputSchema,
+  resolveReviewInputSchema,
   taskActionInputSchema,
   taskActionReasonInputSchema,
   taskListQuerySchema,
@@ -254,6 +257,113 @@ export function createTasksRouter(
   router.post('/tasks/:id/block', ...session, flow('block', true));
   router.post('/tasks/:id/unblock', ...session, flow('unblock', true));
   router.post('/tasks/:id/reopen', ...session, flow('reopen', true));
+
+  router.get(
+    '/tasks/:id/dependencies',
+    ...session,
+    asyncHandler(async (req, res) => {
+      const links = await tasks.listPrerequisites(actor(req), pathParam(req.params.id, 'task'));
+
+      res.status(200).json({ data: links });
+    }),
+  );
+
+  router.post(
+    '/tasks/:id/dependencies',
+    ...session,
+    asyncHandler(async (req, res) => {
+      const input = createDependencyInputSchema.parse(req.body);
+      const edge = await tasks.createDependency(
+        actor(req),
+        pathParam(req.params.id, 'task'),
+        input,
+      );
+
+      res.status(201).json({ data: edge });
+    }),
+  );
+
+  router.get(
+    '/tasks/:id/dependents',
+    ...session,
+    asyncHandler(async (req, res) => {
+      const links = await tasks.listDependents(actor(req), pathParam(req.params.id, 'task'));
+
+      res.status(200).json({ data: links });
+    }),
+  );
+
+  router.delete(
+    '/tasks/:id/dependencies/:dependencyId',
+    ...session,
+    asyncHandler(async (req, res) => {
+      const input = removeDependencyInputSchema.parse(req.body ?? {});
+      const result = await tasks.removeDependency(
+        actor(req),
+        pathParam(req.params.id, 'task'),
+        pathParam(req.params.dependencyId, 'dependency'),
+        input,
+      );
+
+      res.status(200).json({ data: result });
+    }),
+  );
+
+  router.get(
+    '/tasks/:id/blockers',
+    ...session,
+    asyncHandler(async (req, res) => {
+      const blockers = await tasks.getBlockers(actor(req), pathParam(req.params.id, 'task'));
+
+      res.status(200).json({ data: blockers });
+    }),
+  );
+
+  router.get(
+    '/tasks/:id/reviews',
+    ...session,
+    asyncHandler(async (req, res) => {
+      const reviews = await tasks.listReviews(actor(req), pathParam(req.params.id, 'task'));
+
+      res.status(200).json({ data: reviews });
+    }),
+  );
+
+  router.post(
+    '/tasks/:id/reviews/:reviewId/resolve',
+    ...session,
+    asyncHandler(async (req, res) => {
+      const input = resolveReviewInputSchema.parse(req.body ?? {});
+      const review = await tasks.resolveReview(
+        actor(req),
+        pathParam(req.params.id, 'task'),
+        pathParam(req.params.reviewId, 'review'),
+        input.note,
+      );
+
+      res.status(200).json({ data: review });
+    }),
+  );
+
+  router.get(
+    '/tasks/:id/assignment/candidate',
+    ...session,
+    asyncHandler(async (req, res) => {
+      const decision = await tasks.previewAssignment(actor(req), pathParam(req.params.id, 'task'));
+
+      res.status(200).json({ data: decision });
+    }),
+  );
+
+  router.post(
+    '/tasks/:id/assignment/resolve',
+    ...session,
+    asyncHandler(async (req, res) => {
+      const task = await tasks.resolveAssignment(actor(req), pathParam(req.params.id, 'task'));
+
+      res.status(200).json({ data: task });
+    }),
+  );
 
   return router;
 }

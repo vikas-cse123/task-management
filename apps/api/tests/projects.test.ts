@@ -54,6 +54,9 @@ function fakeProjects(): ProjectsService {
     async listProjectActivity() {
       return [];
     },
+    async listProjectReviews() {
+      return [];
+    },
   };
 }
 
@@ -171,5 +174,15 @@ describe('project routes', () => {
     const res = await agent.get(`/api/v1/clients/${CLIENT_ID}/projects`);
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(1);
+  });
+
+  it('lists open project reviews', async () => {
+    await createTestUser(context.auth, { email: 'admin@test.local', accessLevel: 'Admin' });
+    const app = buildApp(context);
+    const agent = await signIn(app, 'admin@test.local');
+
+    const res = await agent.get(`/api/v1/projects/${PROJECT_ID}/reviews`);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual([]);
   });
 });

@@ -39,6 +39,11 @@ export const AUDIT_ACTIONS = [
   'task.complete',
   'task.cancel',
   'task.reopen',
+  'task.dependency.add',
+  'task.dependency.remove',
+  'task.ready',
+  'dependency.review.create',
+  'dependency.review.resolve',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
@@ -52,6 +57,9 @@ export const AUDIT_ENTITY_TYPES = [
   'job_role',
   'project',
   'task',
+  'task_dependency',
+  'dependency_review',
+  'workflow_event',
   'user',
 ] as const;
 

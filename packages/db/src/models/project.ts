@@ -30,6 +30,13 @@ export interface Project {
   targetAt: Date | null;
   templateId: Types.ObjectId | null;
   templateVersion: number | null;
+  /**
+   * Dependency-graph revision counter.
+   *
+   * Bumped inside the same transaction as every edge add/remove so concurrent
+   * graph mutations serialize through optimistic concurrency (Step 13.5).
+   */
+  dependencyVersion: number;
   createdBy: Types.ObjectId;
   updatedBy: Types.ObjectId;
   createdAt: Date;
@@ -61,6 +68,7 @@ export const projectSchema = new Schema<Project>(
     targetAt: { type: Date, default: null },
     templateId: { type: Schema.Types.ObjectId, default: null },
     templateVersion: { type: Number, default: null, min: 1 },
+    dependencyVersion: { type: Number, required: true, default: 0, min: 0 },
     createdBy: { type: Schema.Types.ObjectId, ref: BETTER_AUTH_USER_MODEL, required: true },
     updatedBy: { type: Schema.Types.ObjectId, ref: BETTER_AUTH_USER_MODEL, required: true },
   },

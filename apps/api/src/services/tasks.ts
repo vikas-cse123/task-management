@@ -1,4 +1,6 @@
 import {
+  addDependency as dbAddDependency,
+  applyAutoAssignment as dbApplyAutoAssignment,
   approveTask as dbApproveTask,
   assignTaskRecord,
   blockTask as dbBlockTask,
@@ -7,18 +9,27 @@ import {
   completeTask as dbCompleteTask,
   createSubtaskRecord,
   createTaskRecord,
+  findDependency as dbFindDependency,
   findProject,
   findTask,
   findTaskDetail,
+  getBlockers as dbGetBlockers,
   isActiveClientMember,
   listActiveClientIdsForUser,
   listApprovalQueue as dbListApprovalQueue,
+  listDependents as dbListDependents,
+  listDependencyReviews as dbListDependencyReviews,
   listMyTasks as dbListMyTasks,
+  listPrerequisites as dbListPrerequisites,
   listSubtasks as dbListSubtasks,
   listTaskActivity as dbListTaskActivity,
   listTasks as dbListTasks,
   MongoEmployeeDirectory,
+  reevaluateTask as dbReevaluateTask,
+  removeDependency as dbRemoveDependency,
   reopenTask as dbReopenTask,
+  resolveDependencyReview as dbResolveDependencyReview,
+  resolveTaskAssignee as dbResolveTaskAssignee,
   reviseTask as dbReviseTask,
   startTask as dbStartTask,
   submitTask as dbSubmitTask,
@@ -30,18 +41,25 @@ import {
 import { NotFoundError } from '@interscale/db';
 import type {
   AssignTaskInput,
+  AssignmentResolution,
+  CreateDependencyInput,
   CreateSubtaskInput,
   CreateTaskInput,
+  DependencyLink,
+  DependencyReview,
+  RemoveDependencyInput,
   TaskActionInput,
   TaskActivity,
+  TaskBlockers,
   TaskDetail,
+  TaskDependency,
   TaskListQuery,
   TaskRow,
   TaskSummary,
   UpdateTaskInput,
   UserProfile,
 } from '@interscale/shared';
-import { forbiddenError } from '../lib/http';
+import { forbiddenError, validationError } from '../lib/http';
 
 /**
  * Task orchestration (Steps 8–10).
@@ -109,6 +127,29 @@ export interface TaskService {
   ): Promise<TaskSummary>;
   listMyTasks(actor: UserProfile, query: TaskListQuery): Promise<TaskRowPage>;
   listApprovalQueue(actor: UserProfile, limit: number): Promise<TaskRowPage>;
+  createDependency(
+    actor: UserProfile,
+    successorId: string,
+    input: CreateDependencyInput,
+  ): Promise<TaskDependency>;
+  listPrerequisites(actor: UserProfile, id: string): Promise<DependencyLink[]>;
+  listDependents(actor: UserProfile, id: string): Promise<DependencyLink[]>;
+  removeDependency(
+    actor: UserProfile,
+    successorId: string,
+    dependencyId: string,
+    input: RemoveDependencyInput,
+  ): Promise<{ successorId: string }>;
+  getBlockers(actor: UserProfile, id: string): Promise<TaskBlockers>;
+  listReviews(actor: UserProfile, id: string): Promise<DependencyReview[]>;
+  resolveReview(
+    actor: UserProfile,
+    id: string,
+    reviewId: string,
+    note: string,
+  ): Promise<DependencyReview>;
+  previewAssignment(actor: UserProfile, id: string): Promise<AssignmentResolution>;
+  resolveAssignment(actor: UserProfile, id: string): Promise<TaskSummary>;
 }
 
 export interface TaskRowPage {
@@ -353,7 +394,7 @@ export function createTaskService(
 
     async startTask(actor, id, input) {
       await requireAssigneeOrEdit(actor, id);
-      return dbStartTask(id, actor.id, { expectedVersion: input.expectedVersion });
+      return dbStartTask(id, actor.id, { expectedVersion: input.expectedVersion, directory });
     },
 
     async submitTask(actor, id, input) {
@@ -361,6 +402,7 @@ export function createTaskService(
       return dbSubmitTask(id, actor.id, {
         expectedVersion: input.expectedVersion,
         note: input.note ?? null,
+        directory,
       });
     },
 
@@ -369,12 +411,16 @@ export function createTaskService(
       return dbApproveTask(id, actor.id, {
         expectedVersion: input.expectedVersion,
         note: input.note ?? null,
+        directory,
       });
     },
 
     async reviseTask(actor, id, reason, input) {
       await requireApprover(actor, id);
-      return dbReviseTask(id, actor.id, reason, { expectedVersion: input.expectedVersion });
+      return dbReviseTask(id, actor.id, reason, {
+        expectedVersion: input.expectedVersion,
+        directory,
+      });
     },
 
     async completeTask(actor, id, input) {
@@ -382,27 +428,40 @@ export function createTaskService(
       return dbCompleteTask(id, actor.id, {
         expectedVersion: input.expectedVersion,
         note: input.note ?? null,
+        directory,
       });
     },
 
     async cancelTask(actor, id, reason, input) {
       await requireEdit(actor, id);
-      return dbCancelTask(id, actor.id, reason, { expectedVersion: input.expectedVersion });
+      return dbCancelTask(id, actor.id, reason, {
+        expectedVersion: input.expectedVersion,
+        directory,
+      });
     },
 
     async blockTask(actor, id, reason, input) {
       await requireAssigneeOrEdit(actor, id);
-      return dbBlockTask(id, actor.id, reason, { expectedVersion: input.expectedVersion });
+      return dbBlockTask(id, actor.id, reason, {
+        expectedVersion: input.expectedVersion,
+        directory,
+      });
     },
 
     async unblockTask(actor, id, reason, input) {
       await requireEdit(actor, id);
-      return dbUnblockTask(id, actor.id, reason, { expectedVersion: input.expectedVersion });
+      return dbUnblockTask(id, actor.id, reason, {
+        expectedVersion: input.expectedVersion,
+        directory,
+      });
     },
 
     async reopenTask(actor, id, reason, input) {
       await requireEdit(actor, id);
-      return dbReopenTask(id, actor.id, reason, { expectedVersion: input.expectedVersion });
+      return dbReopenTask(id, actor.id, reason, {
+        expectedVersion: input.expectedVersion,
+        directory,
+      });
     },
 
     async listMyTasks(actor, query) {
@@ -424,6 +483,7 @@ export function createTaskService(
           clientName: row.clientName,
           clientId: row.clientId,
           parentTitle: row.parentTitle,
+          reviewOpen: row.reviewOpen,
         })),
         nextCursor: page.nextCursor,
       };
@@ -442,9 +502,144 @@ export function createTaskService(
           clientName: row.clientName,
           clientId: row.clientId,
           parentTitle: row.parentTitle,
+          reviewOpen: row.reviewOpen,
         })),
         nextCursor: page.nextCursor,
       };
+    },
+
+    async createDependency(actor, successorId, input) {
+      await requireEdit(actor, successorId);
+      return dbAddDependency({
+        predecessorId: input.predecessorTaskId,
+        successorId,
+        actorId: actor.id,
+        confirmCompletedDependent: input.confirmCompletedDependent,
+      });
+    },
+
+    async listPrerequisites(actor, id) {
+      await requireInScope(actor, id);
+      return dbListPrerequisites(id);
+    },
+
+    async listDependents(actor, id) {
+      await requireInScope(actor, id);
+      return dbListDependents(id);
+    },
+
+    async removeDependency(actor, successorId, dependencyId, input) {
+      await requireEdit(actor, successorId);
+
+      const edge = await dbFindDependency(dependencyId);
+
+      if (!edge || edge.successorTaskId !== successorId) {
+        throw new NotFoundError('Dependency');
+      }
+
+      const removed = await dbRemoveDependency({
+        dependencyId,
+        actorId: actor.id,
+        reason: input.reason,
+      });
+
+      // Safe reevaluation: unlock only when truly eligible (assignment,
+      // manual blocks and remaining prerequisites all rechecked).
+      await dbReevaluateTask(removed.successorId, { actorId: actor.id, directory });
+
+      return removed;
+    },
+
+    async getBlockers(actor, id) {
+      await requireInScope(actor, id);
+      return dbGetBlockers(id);
+    },
+
+    async listReviews(actor, id) {
+      await requireInScope(actor, id);
+      return dbListDependencyReviews(id);
+    },
+
+    async resolveReview(actor, id, reviewId, note) {
+      await requireEdit(actor, id);
+      return dbResolveDependencyReview(reviewId, actor.id, note);
+    },
+
+    async previewAssignment(actor, id) {
+      const task = await requireEdit(actor, id);
+      const clientId = await projectClientId(task.projectId);
+
+      const decision = await dbResolveTaskAssignee({
+        clientId,
+        jobRoleId: task.assignedJobRoleId,
+        existingAssigneeId: task.assignedUserId,
+        directory,
+      });
+
+      if (decision.action === 'keep') {
+        return {
+          action: decision.action,
+          employeeId: task.assignedUserId,
+          source: null,
+          reason: null,
+        };
+      }
+
+      if (decision.action === 'assign') {
+        return {
+          action: decision.action,
+          employeeId: decision.employeeId,
+          source: decision.source,
+          reason: null,
+        };
+      }
+
+      return { action: decision.action, employeeId: null, source: null, reason: decision.reason };
+    },
+
+    async resolveAssignment(actor, id) {
+      const task = await requireEdit(actor, id);
+
+      if (task.assignedUserId) {
+        throw validationError('This task already has an assignee');
+      }
+
+      const clientId = await projectClientId(task.projectId);
+
+      const decision = await dbResolveTaskAssignee({
+        clientId,
+        jobRoleId: task.assignedJobRoleId,
+        existingAssigneeId: null,
+        directory,
+      });
+
+      if (decision.action !== 'assign') {
+        throw validationError(
+          decision.action === 'needs_manager' && decision.reason
+            ? decision.reason
+            : 'No eligible employee could be resolved',
+        );
+      }
+
+      if (!task.assignedJobRoleId) {
+        throw validationError('Select a functional job role before resolving assignment');
+      }
+
+      await dbApplyAutoAssignment({
+        taskId: id,
+        employeeId: decision.employeeId,
+        jobRoleId: task.assignedJobRoleId,
+        actorId: actor.id,
+        directory,
+      });
+
+      const updated = await findTask(id);
+
+      if (!updated) {
+        throw new NotFoundError('Task');
+      }
+
+      return updated;
     },
   };
 }

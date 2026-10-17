@@ -90,6 +90,7 @@ async function setupParent() {
       referenceUrl: null,
       sourceMeetingId: null,
       confirmCompletedParent: false,
+      autoAssign: false,
     },
     ACTOR,
     { directory: stubDirectory() },
@@ -112,6 +113,7 @@ function subtaskInput(title: string, assignedUserId: string | null = WRITER) {
     referenceUrl: null,
     sourceMeetingId: null,
     confirmCompletedParent: false,
+    autoAssign: false,
   };
 }
 

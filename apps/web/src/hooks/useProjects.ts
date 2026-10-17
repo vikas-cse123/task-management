@@ -10,6 +10,7 @@ import {
   getProject,
   listClientProjects,
   listProjectActivity,
+  listProjectReviews,
   listProjects,
   updateProject,
   type ProjectFilters,
@@ -66,6 +67,15 @@ export function useProjectActivity(id: string | undefined) {
     queryKey: id ? activityKey(id) : ['projects', 'missing', 'activity'],
     queryFn: () => listProjectActivity(id ?? ''),
     enabled: Boolean(id),
+    retry: false,
+  });
+}
+
+export function useProjectReviews(projectId: string | undefined) {
+  return useQuery({
+    queryKey: projectId ? ['projects', projectId, 'reviews'] : ['projects', 'missing', 'reviews'],
+    queryFn: () => listProjectReviews(projectId ?? ''),
+    enabled: Boolean(projectId),
     retry: false,
   });
 }
