@@ -12,6 +12,9 @@ coverage/
 playwright-report/
 test-results/
 
+# Generated Playwright E2E fixtures (isolated test database credentials)
+apps/web/e2e/fixtures.json
+
 # Environment files (never commit real credentials)
 .env
 .env.*

@@ -7,6 +7,13 @@
  * store plaintext passwords or secrets.
  */
 export const AUDIT_ACTIONS = [
+  'user.create',
+  'user.update',
+  'user.access_level.update',
+  'user.job_roles.update',
+  'user.capabilities.update',
+  'user.status.update',
+  'user.sessions.revoke',
   'client.create',
   'client.update',
   'client.team.assign',
@@ -16,6 +23,22 @@ export const AUDIT_ACTIONS = [
   'client.role.remove',
   'department.update',
   'job_role.update',
+  'project.create',
+  'project.update',
+  'project.status.update',
+  'project.manager.update',
+  'task.create',
+  'task.update',
+  'task.assign',
+  'task.block',
+  'task.unblock',
+  'task.status.update',
+  'task.submit',
+  'task.approve',
+  'task.revise',
+  'task.complete',
+  'task.cancel',
+  'task.reopen',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
@@ -27,6 +50,8 @@ export const AUDIT_ENTITY_TYPES = [
   'client_role_assignment',
   'department',
   'job_role',
+  'project',
+  'task',
   'user',
 ] as const;
 

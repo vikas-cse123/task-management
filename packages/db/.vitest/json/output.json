@@ -1,0 +1,119 @@
+{
+  "numTotalTestSuites": 2,
+  "numPassedTestSuites": 0,
+  "numFailedTestSuites": 2,
+  "numPendingTestSuites": 0,
+  "numTotalTests": 7,
+  "numPassedTests": 6,
+  "numFailedTests": 1,
+  "numPendingTests": 0,
+  "numTodoTests": 0,
+  "snapshot": {
+    "added": 0,
+    "failure": false,
+    "filesAdded": 0,
+    "filesRemoved": 0,
+    "filesRemovedList": [],
+    "filesUnmatched": 0,
+    "filesUpdated": 0,
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0,
+    "didUpdate": false
+  },
+  "startTime": 1792213623037,
+  "success": false,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["task transitions (transactional)"],
+          "fullName": "task transitions (transactional) runs the full approval flow",
+          "status": "passed",
+          "title": "runs the full approval flow",
+          "duration": 67.63139999999999,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["task transitions (transactional)"],
+          "fullName": "task transitions (transactional) rejects invalid transitions and unauthorized approvers",
+          "status": "passed",
+          "title": "rejects invalid transitions and unauthorized approvers",
+          "duration": 69.62119999999993,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["task transitions (transactional)"],
+          "fullName": "task transitions (transactional) completes no-approval work and protects cancelled tasks",
+          "status": "failed",
+          "title": "completes no-approval work and protects cancelled tasks",
+          "duration": 48.93860000000018,
+          "failureMessages": [
+            "ConflictError: A client with this name already exists\n    at createClientRecord (C:/Users/User/Desktop/vikas/project-management/packages/db/src/services/client.service.ts:335:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at setupTask (C:/Users/User/Desktop/vikas/project-management/packages/db/test/task-transitions.test.ts:54:18)\n    at C:/Users/User/Desktop/vikas/project-management/packages/db/test/task-transitions.test.ts:176:20\n    at async file:///C:/Users/User/Desktop/vikas/project-management/node_modules/.pnpm/vitest@5.0.5_@types+node@26_ed960a9ec8f06e9b9842b6effcd806d4/node_modules/vitest/dist/chunks/run.BPv-BBRv.js:2801:20"
+          ],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["task transitions (transactional)"],
+          "fullName": "task transitions (transactional) reopens with authorization state reset",
+          "status": "passed",
+          "title": "reopens with authorization state reset",
+          "duration": 42.84069999999997,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["task transitions (transactional)"],
+          "fullName": "task transitions (transactional) blocks parent completion while children are unfinished",
+          "status": "passed",
+          "title": "blocks parent completion while children are unfinished",
+          "duration": 44.516099999999824,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["task transitions (transactional)"],
+          "fullName": "task transitions (transactional) serializes concurrent approvals without duplicates",
+          "status": "passed",
+          "title": "serializes concurrent approvals without duplicates",
+          "duration": 57.13390000000004,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["task transitions (transactional)"],
+          "fullName": "task transitions (transactional) reports missing tasks",
+          "status": "passed",
+          "title": "reports missing tasks",
+          "duration": 9.295299999999997,
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        }
+      ],
+      "startTime": 1792213624192,
+      "endTime": 1792213624532.2954,
+      "status": "failed",
+      "message": "",
+      "name": "C:/Users/User/Desktop/vikas/project-management/packages/db/test/task-transitions.test.ts"
+    }
+  ]
+}

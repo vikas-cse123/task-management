@@ -18,8 +18,9 @@ generic ClickUp clone.
    or invent requirements.
 2. Do not implement the whole app at once. Work in approved, separately tested
    phases (see [docs/07-development-phases.md](./docs/07-development-phases.md)).
-3. **Do not start Phase 1 feature work without explicit approval.** Steps 0–1
-   are the only authorized work so far.
+3. **Phases 1–2 (Steps 0–12) are complete and verified. Do not start Phase 3+
+   (dependencies, templates, WhatsApp, meetings, deployment) without
+   explicit approval.**
 4. Resolve ambiguities by asking; never decide business rules silently. The
    unresolved list is in [docs/decisions.md](./docs/decisions.md) (§22 of the
    spec).
@@ -33,7 +34,8 @@ generic ClickUp clone.
   Radix primitives, Lucide, Sonner, TanStack Query + Table, React Hook Form +
   Zod, Recharts, FullCalendar (MIT plugins only), date-fns / date-fns-tz.
 - Backend: Node.js LTS, Express 5, Mongoose, Zod, Pino + pino-http, Helmet,
-  express-rate-limit, OpenAPI/Swagger. REST under `/api/v1`.
+  express-rate-limit (general `/api/v1` ceiling; Better Auth protects its own
+  routes), OpenAPI/Swagger. REST under `/api/v1`.
 - Database: **MongoDB** (Mongoose + native driver where adapters require it).
 - Auth: **Better Auth** + `@better-auth/mongo-adapter` + Admin plugin,
   email/password, secure cookies, disabled public signup, one-time Admin
@@ -110,6 +112,7 @@ pnpm lint           # ESLint
 pnpm typecheck      # tsc --noEmit across workspaces
 pnpm build          # build all workspaces
 pnpm test           # Vitest across workspaces
+pnpm --filter @interscale/web test:e2e   # Playwright E2E (needs E2E servers + fixtures)
 ```
 
 CI runs `format:check → lint → typecheck → build → test`
@@ -124,6 +127,11 @@ variables. `apps/worker` requires `MONGODB_URI`.
 Database integration tests (`@interscale/db`) run only when `TEST_MONGODB_URI`
 points at an isolated, replica-set-compatible MongoDB; otherwise they are
 skipped. Never point destructive tests at development or production data.
+
+Playwright E2E (`apps/web/e2e`) runs against a manually started API + Vite on
+an isolated database rebuilt by `apps/api` `e2e-setup` (`MONGODB_URI` must
+contain `interscale_e2e` and `E2E_ALLOW=true`). The full procedure is in
+[docs/08-testing-strategy.md](./docs/08-testing-strategy.md) §6.
 
 ## 10. Documentation expectations
 

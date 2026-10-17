@@ -1,11 +1,45 @@
 import { API_PREFIX, APP_NAME } from '@interscale/shared';
 import { Router } from 'express';
+import type { Auth } from '../auth/auth';
+import type { ClientService } from '../services/clients';
+import type { DashboardService } from '../services/dashboard';
+import type { EmployeeAdminService } from '../services/employees';
+import type { ProjectService } from '../services/projects';
+import type { ReferenceDataService } from '../services/reference-data';
+import type { TaskService } from '../services/tasks';
+import type { UserAccountWriter } from '../services/user-account';
+import { createClientsRouter } from './clients';
+import { createDashboardRouter } from './dashboard';
+import { createMeRouter } from './me';
+import { createProjectsRouter } from './projects';
+import { createTasksRouter } from './tasks';
+import { createReferenceDataRouter } from './reference-data';
+import { createUsersRouter } from './users';
+
+export interface V1RouterDeps {
+  /** Better Auth instance. When absent, auth-dependent routes are not mounted. */
+  auth?: Auth;
+  /** Account-profile writer. Required when `auth` is supplied. */
+  userAccount?: UserAccountWriter;
+  /** Employee administration service (Admin API). */
+  employeeAdmin?: EmployeeAdminService;
+  /** Departments and job-role reference data. */
+  referenceData?: ReferenceDataService;
+  /** Client management and client-specific teams. */
+  clients?: ClientService;
+  /** Project management. */
+  projects?: ProjectService;
+  /** Task management. */
+  tasks?: TaskService;
+  /** Dashboard aggregates. */
+  dashboard?: DashboardService;
+}
 
 /**
- * Versioned application router. Domain modules (users, clients, departments,
- * job roles, ...) are mounted here in later approved steps.
+ * Versioned application router. Domain modules are mounted here as each
+ * approved step lands.
  */
-export function createV1Router(): Router {
+export function createV1Router(deps: V1RouterDeps = {}): Router {
   const router = Router();
 
   router.get('/health', (_req, res) => {
@@ -19,6 +53,34 @@ export function createV1Router(): Router {
       },
     });
   });
+
+  if (deps.auth && deps.userAccount) {
+    router.use('/me', createMeRouter(deps.auth, deps.userAccount));
+  }
+
+  if (deps.auth && deps.employeeAdmin) {
+    router.use('/users', createUsersRouter(deps.auth, deps.employeeAdmin));
+  }
+
+  if (deps.auth && deps.referenceData) {
+    router.use('/reference-data', createReferenceDataRouter(deps.auth, deps.referenceData));
+  }
+
+  if (deps.auth && deps.clients) {
+    router.use('/clients', createClientsRouter(deps.auth, deps.clients, deps.projects));
+  }
+
+  if (deps.auth && deps.projects) {
+    router.use('/projects', createProjectsRouter(deps.auth, deps.projects));
+  }
+
+  if (deps.auth && deps.tasks) {
+    router.use(createTasksRouter(deps.auth, deps.tasks, deps.projects));
+  }
+
+  if (deps.auth && deps.dashboard) {
+    router.use('/dashboard', createDashboardRouter(deps.auth, deps.dashboard));
+  }
 
   return router;
 }

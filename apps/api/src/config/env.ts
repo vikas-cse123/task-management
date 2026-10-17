@@ -18,6 +18,9 @@ const envSchema = z.object({
   BETTER_AUTH_SECRET: z.string().min(16).optional(),
   BETTER_AUTH_URL: z.string().min(1).optional(),
   WEB_ORIGIN: z.string().min(1).optional(),
+  INITIAL_ADMIN_EMAIL: z.string().min(1).optional(),
+  INITIAL_ADMIN_NAME: z.string().min(1).optional(),
+  INITIAL_ADMIN_PASSWORD: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

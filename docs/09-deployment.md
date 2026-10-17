@@ -80,3 +80,29 @@ client/project isolation, input validation, NoSQL-injection resistance, indexes,
 concurrency protection, safe transactions, credential redaction, rate limiting,
 secure webhook validation, protected environment variables, backups + restore
 tests.
+
+## 8. Local startup and first Admin (development)
+
+Full procedure with placeholder values (never commit real credentials):
+
+```bash
+pnpm install
+cp .env.example .env   # fill in MONGODB_URI, BETTER_AUTH_SECRET, INITIAL_ADMIN_*
+
+# Transactional features need a replica set; single-node is enough locally:
+mongod --dbpath /tmp/mongo-rs --port 27017 --replSet rs0 --bind_ip 127.0.0.1
+# then, once: replSetInitiate({ _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27017' }] })
+
+MONGODB_URI='mongodb://127.0.0.1:27017/interscale_pm' pnpm --filter @interscale/db seed
+INITIAL_ADMIN_EMAIL='admin@example.com' INITIAL_ADMIN_NAME='Site Admin' \
+INITIAL_ADMIN_PASSWORD='a-strong-one-time-password' \
+  pnpm --filter @interscale/api bootstrap:admin
+
+pnpm dev:api    # http://127.0.0.1:4000
+pnpm dev:web    # http://localhost:5173
+```
+
+The bootstrap script is idempotent: reruns never duplicate the Admin and never
+reset an existing Admin password. The initial password is read from
+server-side environment variables only — never logged, never sent to the
+frontend. See the root `README.md` and `docs/02-authentication.md` §2.

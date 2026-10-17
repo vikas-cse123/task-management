@@ -6,8 +6,10 @@ performance-marketing agency for B2C travel agencies.
 Hierarchy: **Workspace → Client → Project → Task → Subtask**. One agency
 workspace, responsive web app, WhatsApp-driven notifications.
 
-> **Status:** Steps 0–1 (documentation + monorepo foundation) only. Phase 1
-> feature work has not started and requires explicit approval.
+> **Status:** Phase 2 complete and verified (Steps 0–12: docs, foundation,
+> authentication, employees, clients, integration, projects, tasks, subtasks,
+> approvals, screens, final verification). Phase 3+ (dependencies, templates,
+> WhatsApp, meetings, deployment) requires explicit approval.
 
 ## Documentation
 
@@ -50,6 +52,28 @@ Development:
 pnpm dev:api        # API on http://127.0.0.1:4000
 pnpm dev:web        # SPA on http://localhost:5173 (proxies /api to the API)
 pnpm dev:worker     # background worker (requires MONGODB_URI)
+```
+
+First run — seed reference data, then create the initial Admin (idempotent;
+safe to rerun; never resets an existing Admin):
+
+```bash
+MONGODB_URI='mongodb://127.0.0.1:27017/interscale_pm' pnpm --filter @interscale/db seed
+INITIAL_ADMIN_EMAIL='admin@example.com' \
+INITIAL_ADMIN_NAME='Site Admin' \
+INITIAL_ADMIN_PASSWORD='a-strong-one-time-password' \
+  pnpm --filter @interscale/api bootstrap:admin
+```
+
+> Use placeholder values above — never commit real credentials. The bootstrap
+> password is read from server-side environment variables only; it is never
+> logged and never sent to the frontend.
+
+End-to-end tests (Playwright, isolated database — see
+[`docs/08-testing-strategy.md`](docs/08-testing-strategy.md) §6):
+
+```bash
+pnpm --filter @interscale/web test:e2e
 ```
 
 ## Quality gates

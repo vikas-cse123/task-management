@@ -17,3 +17,6 @@
 export const BETTER_AUTH_USER_MODEL = 'user';
 
 export const BETTER_AUTH_USER_COLLECTION = 'user';
+
+/** Better Auth session collection (used for server-side session revocation). */
+export const BETTER_AUTH_SESSION_COLLECTION = 'session';

@@ -37,10 +37,21 @@ and referenced by tests and commits. Full requirement text lives in
 | Step 0 | Preserve requirements + project docs | all (docs) |
 | Step 1 | Monorepo foundation + toolchain + CI + skeletons | REQ-DATA (connection), REQ-DEPLOY (env), REQ-QUAL, REQ-TEST (harness) |
 | Foundation step | Shared Phase 1 contracts; MongoDB domain models + indexes; client-role assignment integrity service; idempotent reference-data seed; Better Auth identity decision (ADR 0004) | REQ-ROLES, REQ-PERM (lessons/labels), REQ-CLIENT, REQ-DATA, REQ-SEC (audit), REQ-QUAL, REQ-TEST |
-| Phase 1 feature work | Auth, users, roles, clients, permissions | REQ-AUTH, REQ-ROLES, REQ-PERM, REQ-CLIENT, REQ-SEC |
+| Step 3 | Authentication: Better Auth + MongoDB adapter, login-only, profile on the user document (ADR 0005), blocked Admin-plugin surface, forced first-login change, Admin bootstrap, `/api/v1/me` + change-password, guarded frontend routes, auth tests | REQ-AUTH, REQ-SEC, REQ-API (partial), REQ-UI (auth screens), REQ-TEST |
+| Step 4 | Employees, access levels, departments, job roles, Manager capabilities, employee API + screens | REQ-ROLES, REQ-PERM, REQ-API, REQ-UI |
+| Step 5 | Clients, client teams, designated roles, primary manager | REQ-CLIENT, REQ-PERM, REQ-API, REQ-UI |
+| Step 6 | Navigation shell, real-data dashboard, security audit, E2E + integration tests, docs, final report | REQ-UI, REQ-SEC, REQ-TEST, REQ-QUAL |
+| Step 7 | Projects: model/contracts/service/API/UI/tests | REQ-CLIENT (project scope), REQ-API, REQ-UI, REQ-TEST |
+| Step 8 | Tasks: model/contracts/assignment/activity/API/tests | REQ-TASK (engine), REQ-API, REQ-TEST |
+| Step 9 | Real subtasks: nesting/progress/guards/UI/tests | REQ-TASK (subtasks), REQ-UI, REQ-TEST |
+| Step 10 | Status engine + approvals: transitions/queue/concurrency/tests | REQ-TASK (workflow), REQ-SEC, REQ-TEST |
+| Step 11 | Screens: My Tasks/Projects/Task detail/Approvals/dashboard/nav | REQ-UI, REQ-DASH (Phase 2 subset), REQ-TEST |
+| Step 12 | Phase 2 audit, 24-scenario E2E + regression, docs, final report | REQ-SEC, REQ-TEST, REQ-QUAL |
+| Phase 3+ | Dependencies, templates, WhatsApp, meetings, deployment | REQ-DEP, REQ-TMPL, REQ-WA, REQ-MEET, REQ-DASH, REQ-DEPLOY |
 
 ## Status legend
 
-Steps 0–1 and the shared-contracts / database-foundation step are complete and
-verified. Phase 1 authentication/authorization feature work has not started and
-requires explicit approval.
+Steps 0–6 (all of Phase 1) and Steps 7–12 (all of Phase 2: projects, tasks,
+real subtasks, status engine, approvals, screens, final verification) are
+complete and verified. Phase 3+ work has not started and requires explicit
+approval.

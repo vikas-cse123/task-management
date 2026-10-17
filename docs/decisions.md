@@ -36,6 +36,7 @@ listed separately and must **not** be silently decided.
 | [0002](./adr/0002-same-origin-no-cors.md) | Same-origin requests (Vite proxy + Nginx); no CORS package. |
 | [0003](./adr/0003-mongodb-over-relational.md) | MongoDB (not PostgreSQL/Prisma) per the final approved stack. |
 | [0004](./adr/0004-better-auth-identity-strategy.md) | Reference Better Auth users by their `ObjectId` `_id` from the singular `user` collection; no custom user IDs. |
+| [0005](./adr/0005-user-profile-on-better-auth-user.md) | Store the application user profile on the Better Auth `user` document via `additionalFields`; no separate profile collection. |
 
 ## Resolved during the foundation step
 
@@ -43,6 +44,59 @@ listed separately and must **not** be silently decided.
 - **Departments/roles editable vs seed-only** — resolved by D7 (seed-only
   records, editable display name/description, stable keys).
 - **Better Auth identity/reference strategy** — resolved by ADR 0004.
+
+## Resolved during the authentication step
+
+- **Profile storage (open item 10)** — resolved by ADR 0005: the application
+  profile lives on the Better Auth `user` document via `additionalFields`.
+- **Employee account administration surface** — account creation/updates are
+  server-side only; every Admin-plugin HTTP path is blocked at the library level
+  with `disabledPaths` (exact-match list in `apps/api/src/auth/auth.ts`).
+- **Session freshness** — cookie cache disabled; `status`/revocation changes take
+  effect on the next request.
+
+## Resolved during Step 6
+- **Unused `express-rate-limit` dependency removed.** It was listed in the
+  approved stack but never wired into the app; Better Auth's built-in rate
+  limiting (production-enabled, with strict sign-in/change-password rules)
+  already protects auth routes. Removing it avoids implying protection that
+  does not exist. General `/api/v1` rate limiting is deferred to a later
+  phase if load testing requires it.
+  **Reversed in Phase 2 (§4 instruction):** `express-rate-limit@8` is wired as
+  a general `/api/v1` ceiling (1000 req / 15 min per IP, reverse-proxy aware,
+  skipped when `NODE_ENV=test`). Better Auth keeps its own stricter auth
+  rules. Verified live with an `X-Forwarded-For` probe.
+- **As-built screen consolidations.** Employee create/edit and client create
+  are inline dialogs/forms on their list pages (not separate
+  `/team/new`, `/team/:id`, `/clients/new` routes); reference-data editing
+  lives under a single Admin-only `/settings` screen. All §13 screen goals
+  are covered; see `docs/06-frontend.md` §7.
+- **Dashboard shows real scoped data only.** No fabricated statistics: every
+  Overview figure is a live scoped query (Admin = agency-wide, others =
+  assigned clients).
+- **E2E runs serially on isolated infrastructure.** `workers: 1`, a dedicated
+  SPA port bound explicitly to `127.0.0.1`, and a rebuilt `interscale_e2e`
+  database per run (fixtures expire because passwords change).
+
+## Resolved during Phase 2 (Steps 7–12)
+
+- **Task creation needs no new capability.** The §5 matrix grants Managers
+  task create/reassign by scope; `clients.manage` still gates project edits
+  and `clients.team.manage` still gates client-team edits. Documented in
+  `docs/03-authorization.md` §12.
+- **Project creation stays Admin-only** until template-based creation
+  (Phase 4); no Manager capability was introduced for it.
+- **No self-approval for anyone**, including Admins; approver must be
+  designated and in scope.
+- **Reopen resets completion state** (Done/Cancelled → In Progress, clears
+  submission/approval/completion stamps; history stays in activity/audit).
+- **Progress rules:** parent = completed non-cancelled children / total
+  non-cancelled children (childless = own completion); project = completed
+  active leaves / total active leaves; cancelled never counts.
+- **Overdue/Needs-Assignment are derived flags**, never statuses.
+- **TanStack Table v8 pinned** for My Tasks (v9 changed the component API;
+  v8 is the stable classic API and satisfies the approved stack entry).
+- **E2E serial execution kept** (`workers: 1`) with rebuilt fixtures per run.
 
 ## Unresolved — do not invent (see 00 §22)
 
@@ -56,9 +110,6 @@ listed separately and must **not** be silently decided.
 8. Detailed audit retention rules.
 9. Whether the minimal client status set (`active` / `inactive`) is sufficient
    for the MVP, or additional business statuses are required.
-10. Whether the application profile lives on the Better Auth user document
-    (via `additionalFields`) or in a separate `users` profile collection
-    (ADR 0004 leaves this to the authentication step).
 
 ## Technical verifications completed
 
@@ -67,11 +118,27 @@ listed separately and must **not** be silently decided.
   model/collection names (`user`, `session`, `account`, `verification`).
 - MongoDB transaction behavior verified against an isolated single-node replica
   set (`rs0`) on port 27018.
+- Better Auth Admin plugin endpoint protection verified: the plugin routes exist
+  but are blocked at the library level with `disabledPaths` (exact-match list);
+  blocked paths return `404`. Covered by `apps/api/tests/auth.test.ts`.
+- Better Auth configuration surface verified for the authentication step:
+  `emailAndPassword.disableSignUp`, `user.additionalFields` with `input: false`,
+  `session.cookieCache.enabled = false`, `databaseHooks.session.create.before`,
+  `rateLimit.customRules`, `advanced.defaultCookieAttributes`, `disabledPaths`.
+- Cookie/CSRF behavior verified: same-origin requests with HTTP-only,
+  `SameSite=Lax` cookies; `change-password` rotates the session and the new
+  cookie is forwarded to the client.
+- Step 6 twelve-point API security audit: all points verified by code review
+  plus executed tests (`apps/api/tests/*`, `apps/web/e2e/security.spec.ts`);
+  single fix was the `express-rate-limit` removal above.
+- Playwright E2E: 18/18 green (12 scenarios, 4 HTTP security checks,
+  settings/profile coverage) against the running app on an isolated
+  single-node replica-set database; unit/integration totals: shared 14,
+  db 61, api 31 — 0 failed, 0 skipped.
+- Phase 2 E2E: 34/34 green (Phase 1 regression + 24 required scenarios and
+  security checks) on the isolated `interscale_e2e` database; unit/integration
+  totals: shared 14, db 86, api 53 — 0 failed, 0 skipped.
 
 ## Technical verifications still required
 
-- Better Auth Admin plugin endpoint protection (authentication step).
-- Supported version-specific Better Auth configuration APIs (authentication
-  step).
 - Agenda v6 Mongo backend configuration (notifications step).
-- Cookie/CSRF protection specifics (authentication step).

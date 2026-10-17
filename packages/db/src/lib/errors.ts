@@ -36,3 +36,10 @@ export class ConflictError extends DomainError {
     this.name = 'ConflictError';
   }
 }
+
+export class ConcurrentModificationError extends DomainError {
+  constructor(message = 'The record was modified by someone else. Reload and try again.') {
+    super('CONCURRENT_MODIFICATION', message);
+    this.name = 'ConcurrentModificationError';
+  }
+}

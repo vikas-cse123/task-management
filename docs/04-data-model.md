@@ -1,9 +1,9 @@
-# 04 — Data Model (Phase 1)
+# 04 — Data Model (Phases 1–2)
 
 Authoritative requirement: [00-product-requirements.md](./00-product-requirements.md)
 §16 and §25.4. Phase 1 implements identity, departments, job roles, users,
-clients, and client role assignments. Later collections are listed so Phase 1
-decisions remain compatible.
+clients, and client role assignments. Phase 2 adds `projects`, `tasks` and
+`taskActivities`. Later collections are listed so decisions remain compatible.
 
 Better Auth manages its own authentication collections through the MongoDB
 adapter. Do not create redundant identity records. The reference strategy is
@@ -128,9 +128,76 @@ Sanitized audit history (no TTL in MVP).
 Indexes: `{ entityType, entityId, createdAt }`, `{ actorId, createdAt }`,
 `{ createdAt }`. Never store plaintext passwords or secrets.
 
-## 2. Later-phase collections (design-compatible, not implemented in Phase 1)
+### projects (Phase 2)
 
-`projects`, `tasks`, `taskDependencies`, `taskActivity`, `templates`,
+One client owns many projects; a project belongs to exactly one client.
+
+| Field | Notes |
+| --- | --- |
+| `clientId` | Reference to `clients` (immutable after creation). |
+| `name` | Display name (unique per client). |
+| `description` | Nullable. |
+| `type` | `campaign` \| `onboarding` \| `general`. |
+| `status` | `planned` \| `in_progress` \| `live` \| `on_hold` \| `completed` \| `cancelled`. Separate from task statuses; changing it never touches tasks. |
+| `managerId` | Assigned Project Manager (Better Auth user, nullable). Coordination role only — never an access-level promotion or permission grant. Assigning one auto-activates their client team membership. |
+| `startAt` / `targetAt` | Nullable UTC datetimes; target must not precede start. |
+| `templateId` / `templateVersion` | Reserved for Phase 4; stored, never acted on. |
+| `createdBy` / `updatedBy` | Actors. |
+| `createdAt` / `updatedAt` | Timestamps. |
+
+Indexes: unique `{ clientId, name }`, `{ clientId, status }`, `{ managerId }`,
+`{ status, updatedAt }`. Optimistic concurrency enabled (`__v`).
+
+### tasks (Phase 2)
+
+Individually assignable work records; subtasks reuse this collection via
+`parentTaskId` (one level only, enforced server-side).
+
+| Field | Notes |
+| --- | --- |
+| `projectId` | Reference to `projects` (immutable; subtasks inherit the parent's). |
+| `parentTaskId` | Nullable; set only for subtasks. |
+| `title` / `description` | Title max 200 chars. |
+| `assignedUserId` | Nullable = explicit unassigned state (`Needs Assignment` derived flag). |
+| `assignedJobRoleId` | Required whenever an assignee is set. |
+| `dueAt` | Nullable UTC datetime. Overdue is derived, never a status. |
+| `priority` | `low` \| `medium` \| `high` \| `urgent` (default `medium`). |
+| `status` | Exactly `blocked` \| `todo` \| `in_progress` \| `awaiting_approval` \| `done` \| `cancelled`. Changed only through the transition engine. |
+| `approvalRequired` / `approverId` | Designated approver must be an active client-team member; no self-approval. |
+| `submittedBy` / `submittedAt`, `approvedBy` / `approvedAt`, `completedAt` | Workflow timestamps. |
+| `revisionCount` | Revision rounds requested. |
+| `sopUrl` / `referenceUrl` | Optional links (no file hosting). |
+| `sourceMeetingId` | Reserved for Phase 6; stored, never acted on. |
+| `createdBy` / `updatedBy` | Actors. |
+| `createdAt` / `updatedAt` | Timestamps. |
+
+Indexes: `{ projectId, status }`, `{ projectId, parentTaskId }`,
+`{ assignedUserId, status }`, `{ approverId, status }`,
+`{ status, dueAt }`, `{ dueAt }`. Optimistic concurrency enabled (`__v`).
+
+Rules: assignee must exist, be active, hold the job role, and belong to the
+client team; approver must be an active client-team member; a parent cannot
+complete while required subtasks are unfinished; progress = completed
+non-cancelled leaves / total non-cancelled leaves.
+
+### taskActivities (Phase 2)
+
+Durable per-task history (user-visible), complementing the compliance audit
+log which receives parallel entries for critical changes.
+
+| Field | Notes |
+| --- | --- |
+| `taskId` / `actorId` | Task and actor (actor nullable). |
+| `action` | Audit-action vocabulary (`task.create`, `task.submit`, …). |
+| `previousValue` / `newValue` | Sanitized state payloads. |
+| `notes` | Optional reason/remark. |
+| `createdAt` | Timestamp (append-only). |
+
+Index: `{ taskId, createdAt }`.
+
+## 2. Later-phase collections (design-compatible, not implemented yet)
+
+`taskDependencies`, `templates`,
 `templateNodes`, `meetings`, `meetingActionItems`, `notificationOutbox`,
 `notificationLogs`.
 

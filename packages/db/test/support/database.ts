@@ -6,6 +6,9 @@ import {
   ClientTeamMemberModel,
   DepartmentModel,
   JobRoleModel,
+  ProjectModel,
+  TaskActivityModel,
+  TaskModel,
 } from '../../src';
 import { hasTestDatabase } from './flags';
 
@@ -47,6 +50,9 @@ export async function ensureIndexes(): Promise<void> {
     ClientTeamMemberModel.createIndexes(),
     DepartmentModel.createIndexes(),
     JobRoleModel.createIndexes(),
+    ProjectModel.createIndexes(),
+    TaskActivityModel.createIndexes(),
+    TaskModel.createIndexes(),
   ]);
 }
 

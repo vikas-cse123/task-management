@@ -81,9 +81,47 @@ The approved stack does **not** include a CORS package. Authentication relies on
 production Nginx serves the SPA and reverse-proxies the API on one origin. See
 [adr/0002-same-origin-no-cors.md](./adr/0002-same-origin-no-cors.md).
 
-## 10. Open items (do not invent)
+## 10. Implementation notes (Step 3)
 
-- Exact employee invitation / password-delivery workflow (§22 item 8).
-- Precise audit-retention rules (§22 item 10).
-- Version-specific Better Auth APIs, adapter identity-ID behavior, and plugin
-  endpoint protection must be verified against installed versions before use.
+Implemented in `apps/api`, `apps/web` and `packages/*`.
+
+- **Config** (`apps/api/src/auth/auth.ts`, `createAuth`): email + password,
+  `disableSignUp`, `user.additionalFields` (all `input: false`),
+  `session.cookieCache.enabled = false`, `databaseHooks.session.create.before`
+  rejecting inactive accounts, `disabledPaths` blocking all Admin-plugin routes,
+  `rateLimit.customRules` for `/sign-in/email` and `/change-password`,
+  same-origin `trustedOrigins`, HTTP-only `SameSite=Lax` cookies.
+- **Profile** lives on the Better Auth `user` document; see
+  [adr/0005-user-profile-on-better-auth-user.md](./adr/0005-user-profile-on-better-auth-user.md)
+  and `packages/shared/src/schemas/user.ts`.
+- **Endpoints** — Better Auth is mounted at `/api/auth/*`; the application adds
+  `GET /api/v1/me` and `POST /api/v1/me/change-password`. Guard middleware
+  (`requireAuth`, `requireActiveAccount`, `requirePasswordChanged`,
+  `requireAccessLevel`, `requireCapability`) is in
+  `apps/api/src/auth/middleware.ts`.
+- **Bootstrap** — `apps/api/src/scripts/bootstrap-admin.ts` (`pnpm
+  bootstrap:admin`) creates the first Admin from `INITIAL_ADMIN_EMAIL` /
+  `INITIAL_ADMIN_PASSWORD`; idempotent, audited, never logs plaintext, and
+  tolerates a concurrent create.
+- **Frontend** — `/login` and `/change-password` screens plus a
+  `RequireAuth` guard that pins users with `requiresPasswordChange` to
+  `/change-password`. Session state is always read from `GET /api/v1/me`.
+- **Tests** — `apps/api/tests/auth.test.ts` uses the in-memory adapter
+  (`@better-auth/memory-adapter`) and covers sign-up disabled, all
+  `/api/auth/admin/*` paths returning 404, unauthenticated access, sign-in,
+  inactive-account refusal, immediate deactivation, and the forced-change flow.
+
+### Change-password session rotation
+
+`revokeOtherSessions` (default `true`, `changePasswordInputSchema`) makes Better
+Auth delete the user's sessions and issue a **new** session. The new cookie is
+only present on the library response headers, so `POST /api/v1/me/change-password`
+reads them with `returnHeaders: true` and forwards `Set-Cookie` to the browser.
+Omitting this would leave the client holding a token that no longer exists.
+
+## 11. Open items (do not invent)
+
+- Exact employee invitation / password-delivery workflow (§22 item 8) — the
+  approved MVP is: secure temporary password shown once + forced first-login
+  change (§4).
+- Detailed audit-retention rules (§22 item 10).

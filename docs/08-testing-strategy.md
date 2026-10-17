@@ -23,7 +23,9 @@ render.
 - Initial Admin account is created securely.
 - Bootstrap cannot overwrite an existing Admin password (rerun is safe).
 - Valid credentials log in; invalid credentials are rejected.
-- Public signup is disabled (library level + surfaced as 404/403).
+- Public signup is disabled at the library level (`POST
+  /api/auth/sign-up/email` returns 400 with no session cookie); every
+  Better Auth admin-plugin HTTP path returns 404.
 - Non-Admin users cannot create employee accounts.
 - Unauthorized access to admin functionality is rejected.
 - Deactivated users cannot access protected resources.
@@ -90,3 +92,74 @@ against a self-hosted or explicitly provided test instance via
 Task/subtask, dependency, notification, and meeting test suites are defined in
 §19 and are executed in Phases 2–6. API tests use Supertest; E2E flows use
 Playwright.
+
+## 6. Playwright end-to-end procedure (Step 6)
+
+E2E runs against the **real** API + SPA on an **isolated** database that is
+rebuilt before every run. Status at Phase 1 completion: **18/18 green**
+(12 scenarios + 4 HTTP security checks + settings/profile coverage).
+
+Specs (`apps/web/e2e`):
+
+| File | Coverage |
+| --- | --- |
+| `auth.spec.ts` | Scenarios 1 (admin login), 4 (first-login password change), 10 (logout/session). |
+| `employees.spec.ts` | Scenarios 2 (employee creation + one-time password), 3 (multiple job roles). |
+| `clients.spec.ts` | Scenarios 5 (client creation), 6 (team + designated roles), 7 (manager authorized), 8 (manager unauthorized). |
+| `permissions.spec.ts` | Scenario 9 (employee restrictions). |
+| `responsive.spec.ts` | Scenario 11 (mobile drawer, 390×844). |
+| `workflow.spec.ts` | Scenario 12 (Admin → Employee → Client chain). |
+| `security.spec.ts` | Signup disabled, admin paths blocked, 401s, manager create-403/edit-200, IDOR 404s. |
+| `settings.spec.ts` | Reference-data label editing (Admin) + forbidden for others; profile screen. |
+
+Tests run serially (`workers: 1`) because scenarios share fixture users;
+mutating scenarios use fresh entities. Fixtures expire after one run
+(passwords change), so **always rebuild before running**:
+
+```bash
+# 1. Isolated single-node replica set (transactions required), e.g. port 27018.
+mongod --dbpath /tmp/mongo-rs-e2e --port 27018 --replSet rs0 --bind_ip 127.0.0.1
+# then, once: replSetInitiate({ _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27018' }] })
+
+# 2. API against the isolated database (port 4000; `dev` = `tsx watch`).
+MONGODB_URI='mongodb://127.0.0.1:27018/interscale_e2e?directConnection=true' \
+BETTER_AUTH_SECRET='<32+-char-secret>' BETTER_AUTH_URL='http://127.0.0.1:4000' \
+WEB_ORIGIN='http://127.0.0.1:5174' NODE_ENV=test LOG_LEVEL=warn \
+  pnpm --filter @interscale/api dev
+
+# 3. Rebuild fixtures (drops the database; refuses non-`interscale_e2e` URIs).
+MONGODB_URI='mongodb://127.0.0.1:27018/interscale_e2e?directConnection=true' \
+BETTER_AUTH_SECRET='<same-secret>' E2E_ALLOW=true E2E_API_BASE='http://127.0.0.1:4000' \
+  pnpm --filter @interscale/api exec tsx src/scripts/e2e-setup.ts
+
+# 4. SPA on a port that does not collide with other projects (proxies /api).
+pnpm --filter @interscale/web exec vite --port 5174 --strictPort --host 127.0.0.1
+
+# 5. Run the suite (baseURL must match step 4).
+pnpm --filter @interscale/web test:e2e
+```
+
+Environment notes:
+
+- `WEB_ORIGIN` must exactly match the browser origin or Better Auth rejects
+  the session requests.
+- Bind the SPA explicitly (`--host 127.0.0.1`) and use a dedicated port: on
+  machines running several Vite projects, a wildcard-bound neighbor can shadow
+  `localhost` and the suite would test the wrong application.
+- `apps/web/e2e/fixtures.json` is generated and git-ignored; never commit it.
+
+## 7. Phase 2 test record (Steps 7–12)
+
+Unit/integration (all executed, 0 skipped): shared 14, db 86 (project 7,
+task 6, subtask 4, transitions 7, dashboard 1, plus Phase 1 suites), api 53
+(projects 9, tasks 11, dashboard 2, plus Phase 1 suites).
+
+E2E (Playwright/Chromium, real app + isolated `interscale_e2e` database,
+34/34 green including the Phase 1 regression): the 24 required scenarios —
+project creation, manager assignment, task creation/assignment/priority/
+deadline, parent + subtasks, My Tasks, start, submit, approval visibility,
+approve, revision, resubmission, progress, blocked parent, unrelated-client
+and unrelated-task isolation, unauthorized approval, mobile tasks/projects,
+session protection — plus HTTP security checks and settings/profile
+coverage. Fixtures extended (`e2e-setup.ts`) with flow members, roles and a
+campaign project; suites rerun from rebuilt fixtures every time.

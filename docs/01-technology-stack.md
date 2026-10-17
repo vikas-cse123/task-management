@@ -35,7 +35,9 @@ explicit approval. The authoritative requirement text is in
 
 - Node.js LTS, TypeScript, Express 5.
 - Mongoose ODM, Zod request validation, centralized error handling.
-- Pino + pino-http (logging), Helmet, express-rate-limit, OpenAPI/Swagger.
+- Pino + pino-http (logging), Helmet, express-rate-limit (general `/api/v1`
+  ceiling, reverse-proxy aware; Better Auth rate-limits its own routes),
+  OpenAPI/Swagger.
 - Organization: routes → controllers → services → models, plus auth /
   authorization / validation middleware. Business logic lives in services.
 

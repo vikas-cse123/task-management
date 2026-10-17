@@ -97,3 +97,108 @@ The table below is the authoritative Phase 1 matrix. "Capability" names refer to
 - Client membership and role assignments must stay consistent.
 - Invalid active assignments must be prevented.
 - Application access levels remain separate from Better Auth internal roles.
+
+## 9. Step 4 implementation notes
+
+- Every `/api/v1/users` route is guarded by `requireActiveSession` + `requireAdmin`; the actor id is read from the resolved server session, never the request body.
+- Application profile fields are `input: false` (ADR 0005): clients cannot set access level, status, job roles or capabilities.
+- Lockout protection: an Admin cannot change their own access level or deactivate themselves, and the last active Admin cannot be demoted or deactivated.
+- Deactivation revokes the user's sessions; every critical change writes an audit record (`user.*`).
+- Reference data (departments, functional job roles) is readable by any active user; only Admins may edit display name/description. Keys and relationships are immutable.
+- Optional Manager/Employee capabilities are granted per user and evaluated by `hasCapability` (Admin implicitly holds all).
+
+## 10. Step 5 implementation notes
+
+- Client listing is scope-filtered in the service layer: Admins read every
+  client; Managers and Employees read only clients where they hold an active
+  team membership. Out-of-scope reads and writes return 404 (IDOR prevention).
+- Editing a client requires `clients.manage`; team and designation changes
+  require `clients.team.manage`; creating a client is Admin-only.
+- The primary manager must be an active employee and automatically gains an
+  active `manager` team membership; the membership cannot be deactivated while
+  the user is the primary manager.
+- Deactivating a membership also deactivates that member's active designated
+  role assignments. Designated assignment itself is transactional and requires
+  a replica-set MongoDB deployment.
+
+## 11. Step 6 security audit (2026-10-17, all Phase 1 endpoints)
+
+Method: code review of every route/service/guard plus executed tests
+(`apps/api/tests/*.test.ts` and `apps/web/e2e/security.spec.ts`, 16/16 E2E
+green). Verdicts on the twelve audit points:
+
+1. Public signup disabled at the library level (`disableSignUp: true`);
+   `POST /api/auth/sign-up/email` returns 400 with no session cookie.
+2. All fifteen Better Auth admin-plugin HTTP paths blocked via `disabledPaths`
+   (exact match); probed paths return 404.
+3. Employee creation and permission management are Admin-only
+   (`requireAdmin` + service guards); profile fields are `input: false`.
+4. Client edits require `clients.manage` **and** active membership scope;
+   team/role edits require `clients.team.manage` **and** scope.
+5. Client creation is Admin-only (middleware + service guard); managers get
+   403 over HTTP and no creation UI.
+6. Employees list only clients where they hold an active membership; direct
+   URLs to other clients return 404 (verified for manager and employee).
+7. Membership grants scoped reads (client summary, team, designations) only —
+   no cross-client data, no employee administration, no settings.
+8. Every protected endpoint runs `requireActiveSession` (session + active
+   account + password already changed), except the force-change flow itself.
+9. Scope is resolved server-side from the session on every request; URL ID
+   tampering returns 404 (existence not leaked) or 403.
+10. User deactivation revokes sessions immediately (no cookie cache);
+    membership deactivation clears that member's designations; the primary
+    manager membership cannot be deactivated while assigned.
+11. `toUserProfile` exposes no hashes/tokens/secrets; the Pino logger redacts
+    passwords, tokens, cookies and authorization headers; bootstrap secrets
+    come from server-side env only and are never logged.
+12. Designated assignment/removal runs in a MongoDB transaction (partial
+    unique index guards the single-active-primary invariant); requires a
+    replica-set deployment. Verified on an isolated single-node replica set.
+
+One fix applied: the unused `express-rate-limit` dependency was removed
+(Better Auth rate limiting was already active on auth routes).
+
+## 12. Phase 2 authorization (projects, tasks, approvals)
+
+Matrix source: `docs/00-product-requirements.md` §5. Task creation needs no
+new capability: Managers create/reassign tasks by scope alone; project edits
+keep the `clients.manage` gate (Step 7.6); project creation stays Admin-only.
+
+- Projects: Admin sees/manages all; Managers read member-client projects and
+  edit them with `clients.manage`; Employees read only projects containing
+  their own non-cancelled assigned work. Creation is Admin-only.
+- Project Managers (assigned `managerId`) gain client-team membership, never
+  access levels or permissions.
+- Tasks: Admin all; Managers member-client tasks; Employees assigned tasks
+  plus parent context for their subtasks. Membership alone never opens a
+  project or task.
+- Task creation/edit/assignment: Admin, or Manager in scope. Assignees may
+  start, submit, complete (no-approval), block, and edit description/due date
+  on their own work.
+- Subtask creation: Admin or in-scope Manager (employees never by default).
+- Approvals: only the designated approver inside the task scope; no
+  self-approval for anyone, including Admins. Revision/cancel/block/unblock/
+  reopen reasons are mandatory. Done/Cancelled exit only via reopen
+  (Manager/Admin).
+- Every mutation is audited (sanitized) with a parallel user-visible task
+  activity entry; status flows are transactional with optimistic concurrency.
+
+## 13. Step 12 security audit (Phase 2 endpoints)
+
+Method: code review of every new route/service/guard plus executed tests
+(API suites, `apps/web/e2e/phase2-security.spec.ts`, full 34-test E2E green).
+
+- Auth/session/force-change guards on all routes; Admin-only project and
+  client creation enforced in middleware and services.
+- Manager edits confined to member scope; out-of-scope reads/writes return
+  404 (verified for projects, tasks, clients, team, roles, activity).
+- Employees cannot create projects/tasks, reassign work, edit settings, or
+  approve without designation; URL tampering returns 404/403, never data.
+- No mass assignment: update schemas exclude status, assignee (tasks),
+  client (projects), access levels and roles (users).
+- No secret leakage: task/project/activity payloads carry no hashes, tokens
+  or sessions; audit and activity values are sanitized.
+- Concurrency: transactions + `__v` checks; parallel approvals produce a
+  single transition (tested); stale versions get 409.
+- General `/api/v1` rate limiting restored (1000 req / 15 min, proxy-aware,
+  skipped in `test` env); Better Auth keeps stricter auth-route rules.

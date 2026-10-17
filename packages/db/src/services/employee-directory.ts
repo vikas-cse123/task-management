@@ -1,4 +1,8 @@
 import { isValidObjectId, type UserStatus } from '@interscale/shared';
+import mongoose from 'mongoose';
+import type { Connection } from 'mongoose';
+import { getConnection } from '../connection';
+import { BETTER_AUTH_USER_COLLECTION } from '../identity';
 import { NotFoundError, ValidationError } from '../lib/errors';
 
 /**
@@ -62,4 +66,43 @@ export async function resolveAssignableEmployee(
   }
 
   return employee;
+}
+
+/** Raw shape of the fields read from the Better Auth `user` collection. */
+interface RawUserDocument {
+  _id: mongoose.Types.ObjectId;
+  status?: unknown;
+  jobRoleIds?: unknown;
+}
+
+/**
+ * Database-backed {@link EmployeeDirectory}.
+ *
+ * Reads employee attributes directly from the Better Auth `user` collection
+ * (identity is owned by Better Auth; see ADR 0004). Only existence, active
+ * status and held job-role ids are read, so no authentication data is exposed.
+ */
+export class MongoEmployeeDirectory implements EmployeeDirectory {
+  constructor(private readonly connection?: Connection) {}
+
+  async findById(id: string): Promise<EmployeeSnapshot | null> {
+    if (!isValidObjectId(id)) {
+      return null;
+    }
+
+    const connection = this.connection ?? getConnection();
+    const document = await connection
+      .collection<RawUserDocument>(BETTER_AUTH_USER_COLLECTION)
+      .findOne({ _id: new mongoose.Types.ObjectId(id) });
+
+    if (!document) {
+      return null;
+    }
+
+    return {
+      id,
+      status: document.status === 'inactive' ? 'inactive' : 'active',
+      jobRoleIds: Array.isArray(document.jobRoleIds) ? document.jobRoleIds.map(String) : [],
+    };
+  }
 }

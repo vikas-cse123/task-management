@@ -4,3 +4,6 @@ export * from './client-role-assignment';
 export * from './client-team-member';
 export * from './department';
 export * from './job-role';
+export * from './project';
+export * from './task';
+export * from './task-activity';
