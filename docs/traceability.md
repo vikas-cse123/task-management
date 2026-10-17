@@ -53,12 +53,20 @@ and referenced by tests and commits. Full requirement text lives in
 | Step 16 | Downstream safety: review flags/reopen/cancel/removal/tests | REQ-DEP (safety), REQ-SEC, REQ-TEST |
 | Step 17 | Dependency UI: section/dialogs/reasons/counts/flags | REQ-UI, REQ-DASH (Phase 3 subset), REQ-TEST |
 | Step 18 | Phase 3 audit, 30-scenario E2E + regression, docs, final report | REQ-SEC, REQ-TEST, REQ-QUAL |
-| Phase 4+ | Templates, WhatsApp, meetings, deployment | REQ-TMPL, REQ-WA, REQ-MEET, REQ-DASH, REQ-DEPLOY |
+| Step 19 | Template contracts + models: versions/nodes/dependencies, validation, expansion, deadlines | REQ-TMPL (data model), REQ-DATA, REQ-TEST |
+| Step 20 | Official Campaign template (seed, idempotent) | REQ-TMPL (campaign), REQ-DATA, REQ-TEST |
+| Step 21 | Official Onboarding template (seed, idempotent) | REQ-TMPL (onboarding), REQ-DATA, REQ-TEST |
+| Step 22 | Template admin API + atomic idempotent generation API | REQ-TMPL (generation), REQ-API, REQ-SEC, REQ-TEST |
+| Step 23 | Template management screens + project creation wizard | REQ-UI, REQ-TMPL, REQ-TEST |
+| Step 24 | Phase 4 audit, E2E + regression, docs, final report | REQ-SEC, REQ-TEST, REQ-QUAL |
+| Phase 5+ | WhatsApp notifications, meetings, dashboards, deployment | REQ-WA, REQ-MEET, REQ-DASH, REQ-DEPLOY |
 
 ## Status legend
 
 Steps 0–6 (all of Phase 1), Steps 7–12 (all of Phase 2: projects, tasks,
-real subtasks, status engine, approvals, screens, final verification) and
+real subtasks, status engine, approvals, screens, final verification),
 Steps 13–18 (all of Phase 3: dependencies, auto-progression, auto-assignment,
-downstream safety, dependency UI, final verification) are complete and
-verified. Phase 4+ work has not started and requires explicit approval.
+downstream safety, dependency UI, final verification) and Steps 19–24 (all of
+Phase 4: templates, official seeds, generation API, template UI + wizard,
+final verification) are complete and verified. Phase 5+ work has not started
+and requires explicit approval.

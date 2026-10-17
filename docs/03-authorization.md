@@ -202,3 +202,74 @@ Method: code review of every new route/service/guard plus executed tests
   single transition (tested); stale versions get 409.
 - General `/api/v1` rate limiting restored (1000 req / 15 min, proxy-aware,
   skipped in `test` env); Better Auth keeps stricter auth-route rules.
+
+## 14. Phase 4 authorization (templates and generation)
+
+Matrix source: `docs/00-product-requirements.md` §5 and §9. Templates are a
+workspace-level asset; project creation from a template is a capability-gated,
+scope-bounded Manager action.
+
+- **Managing templates is Admin-only.** Create, update, save-draft, validate,
+  publish and archive are guarded by `requireAdmin()` in the router and again in
+  the service (403 regardless of request body). Employees can never reach the
+  template surface.
+- **Managers may read published templates only** — their list query is forced to
+  `status: published`, and details/versions return 404 for drafts or archived
+  templates, so template internals are not leaked.
+- **Project generation** requires the `projects.create_from_template`
+  capability (Admins implicitly hold it; a Manager must be granted it) **and**
+  client scope: Managers may generate only for clients where they hold an active
+  team membership; out-of-scope clients return 404 (IDOR protection). The
+  Project Manager assigned during generation gains membership, never elevated
+  access.
+- **Assignment resolution never invents eligibility.** A template's designated
+  employee override is accepted only when the person is an active client member
+  holding the required job role. Missing designations become visible
+  `needs_assignment` warnings; they never auto-assign an arbitrary employee.
+- **Approver authorization is preserved.** When a template node requires
+  approval, the approver resolves to the project's Project Manager (who already
+  holds approval authority), never to an employee without it; unresolved
+  approvers become visible `needs_approver` warnings.
+- **Template variable injection is impossible.** Only the allow-listed
+  `{{variable}}` keys substitute; unknown or malformed placeholders are rejected
+  at validation, and `{{adIndex}}` is allowed only inside a repeat group.
+- **Invalid graphs cannot be published.** Graph validation (duplicate/unknown
+  keys, one-level nesting, self/duplicate/parent-child/cyclic edges, unknown
+  variables, approval/approver consistency) runs on the persisted draft before
+  publish and again before preview/creation.
+- Existing Phase 1–3 rules still hold: every route runs `requireActiveSession`;
+  generated tasks carry no elevated permissions; approving generated work obeys
+  the designated-approver rule.
+
+## 15. Step 24 security audit (Phase 4 endpoints)
+
+Method: code review of the template/generation routers and services plus
+executed tests (`apps/api/tests/{templates,generation}.test.ts`,
+`apps/web/e2e/phase4-*.spec.ts`, full 69-test E2E green).
+
+- **Admin-only template management** enforced in middleware and service;
+  Employees and Managers are blocked; Managers see published templates only.
+- **Manager-scoped template use**: capability + active-membership scope on
+  generation; out-of-scope clients are 404.
+- **Cross-client isolation**: generation validates the client is active and in
+  scope; generated projects stay within the selected client.
+- **Role-based assignment validation**: overrides are rejected unless the person
+  is an active member holding the required role; primary designations are
+  re-validated for eligibility at preview/creation.
+- **Approver authorization**: only the Project Manager can resolve as approver;
+  no self-approval; unresolved approvers are surfaced, not silently assigned.
+- **Template variable injection / dangerous expressions**: allow-listed
+  variables only; no expression evaluation; unknown keys rejected.
+- **Graph validation**: invalid/cyclic graphs cannot publish or instantiate.
+- **Concurrent publish**: unique partial index (one published version per
+  template) plus optimistic concurrency; a conflicting publish is a 409.
+- **Idempotency abuse**: unique `idempotencyKey`; same key + different payload
+  is 409; the record is written transactionally with the project graph.
+- **Transaction boundaries**: all writes for one generation commit atomically;
+  a failure leaves no partial project; a duplicate-key race resolves to the
+  existing result.
+- **Audit-log redaction**: generation writes a sanitized `project.generate`
+  audit entry; no credentials, tokens or sessions are stored.
+- **Unauthorized modification of existing generated projects**: generation never
+  mutates previously created projects; template edits only affect future
+  instantiations (published versions are immutable).

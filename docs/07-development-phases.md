@@ -57,6 +57,17 @@ template versioning/configuration; automatic client-specific assignments.
 **Acceptance:** creating a Singapore or Goa campaign produces the correct tasks,
 subtasks, assignments, and prerequisites.
 
+**Status: complete (Steps 19-24).** Template engine (stable-key identity; version-scoped
+editable drafts; immutable published versions; graph validation); official
+Campaign and Onboarding templates seeded idempotently; deterministic expansion
+(variables, repeated creative groups, IST calendar-day deadlines, initial
+statuses); atomic, idempotent project generation with role/approver resolution
+and visible missing-assignment warnings; Admin template management screens and a
+project creation wizard with live preview. Shared 14, db 159, api 70 unit/
+integration tests and 69 E2E tests green (full Phase 1-3 regression); security
+audit done. **Phase 4 declared complete. STOP. Phase 5+ requires explicit
+approval.**
+
 ## Phase 5 — WhatsApp Notifications
 
 **Build:** Meta WhatsApp Cloud API integration; approved templates; Agenda
@@ -143,6 +154,23 @@ end-to-end UAT; AWS EC2 deployment; Nginx; PM2; HTTPS.
   design hand-off); quality gates (format, lint, typecheck, build) green;
   unit/integration (shared 14, db 113, api 58 — 0 failed, 0 skipped);
   Playwright E2E 54/54 green on the production preview bundle against the
-  isolated `interscale_e2e` database (Phase 1/2 regression + 30 required
-  scenarios and security checks); docs updated. **Phase 3 declared
-  complete. STOP. Phase 4+ requires explicit approval.**
+   isolated `interscale_e2e` database (Phase 1/2 regression + 30 required
+   scenarios and security checks); docs updated. **Phase 3 declared
+   complete. STOP. Phase 4+ requires explicit approval.**
+- **Steps 19–22 (template contracts, models, services, seeds, API):**
+   complete. Shared template/generation contracts; `templates`,
+   `templateVersions`, `templateNodes`, `templateDependencies` and
+   `projectGenerations` collections with immutability and single-published-
+   version invariants; pure graph validation and deterministic expansion;
+   deadline arithmetic in the IST display timezone; official Campaign and
+   Onboarding seeds; Admin template API and capability/scope-guarded,
+   idempotent generation API.
+- **Steps 23–24 (frontend, verification, docs):** complete. Admin template
+   list/editor and project creation wizard with live preview; security audit of
+   the template/generation surface; quality gates (format, lint, typecheck,
+   build) green; unit/integration (shared 14, db 159, api 70 — 0 failed,
+   0 skipped, transactions executed) and Playwright E2E 69/69 green on the
+   production preview bundle against the isolated `interscale_e2e` database
+   (Phase 1–3 regression + Phase 4 scenarios and security checks); docs
+   updated. **Phase 4 declared complete. STOP. Phase 5+ requires explicit
+   approval.**

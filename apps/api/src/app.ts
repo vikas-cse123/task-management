@@ -13,8 +13,10 @@ import { createV1Router } from './routes/v1';
 import { createClientService, type ClientService } from './services/clients';
 import { createDashboardService, type DashboardService } from './services/dashboard';
 import { createEmployeeAdminService, type EmployeeAdminService } from './services/employees';
+import { createGenerationService, type GenerationService } from './services/generation';
 import { createProjectService, type ProjectService } from './services/projects';
 import { createTaskService, type TaskService } from './services/tasks';
+import { createTemplateService, type TemplateService } from './services/templates';
 import { dbReferenceDataService, type ReferenceDataService } from './services/reference-data';
 import { dbUserAccountWriter, type UserAccountWriter } from './services/user-account';
 
@@ -38,6 +40,10 @@ export interface CreateAppOptions {
   tasks?: TaskService;
   /** Dashboard service (defaults to the database-backed implementation). */
   dashboard?: DashboardService;
+  /** Template administration (Phase 4). */
+  templates?: TemplateService;
+  /** Project generation from a published template (Phase 4). */
+  generation?: GenerationService;
 }
 
 /**
@@ -57,6 +63,8 @@ export function createApp(options: CreateAppOptions = {}): Express {
   const projects = options.projects ?? createProjectService();
   const tasks = options.tasks ?? createTaskService();
   const dashboard = options.dashboard ?? createDashboardService();
+  const templates = options.templates ?? createTemplateService();
+  const generation = options.generation ?? createGenerationService();
 
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
@@ -88,6 +96,8 @@ export function createApp(options: CreateAppOptions = {}): Express {
       projects,
       tasks,
       dashboard,
+      templates,
+      generation,
     }),
   );
 

@@ -7,10 +7,15 @@ import {
   DepartmentModel,
   DependencyReviewModel,
   JobRoleModel,
+  ProjectGenerationModel,
   ProjectModel,
   TaskActivityModel,
   TaskDependencyModel,
   TaskModel,
+  TemplateDependencyModel,
+  TemplateModel,
+  TemplateNodeModel,
+  TemplateVersionModel,
   WorkflowEventModel,
 } from '../../src';
 import { hasTestDatabase } from './flags';
@@ -54,10 +59,15 @@ export async function ensureIndexes(): Promise<void> {
     DepartmentModel.createIndexes(),
     DependencyReviewModel.createIndexes(),
     JobRoleModel.createIndexes(),
+    ProjectGenerationModel.createIndexes(),
     ProjectModel.createIndexes(),
     TaskActivityModel.createIndexes(),
     TaskDependencyModel.createIndexes(),
     TaskModel.createIndexes(),
+    TemplateDependencyModel.createIndexes(),
+    TemplateModel.createIndexes(),
+    TemplateNodeModel.createIndexes(),
+    TemplateVersionModel.createIndexes(),
     WorkflowEventModel.createIndexes(),
   ]);
 }

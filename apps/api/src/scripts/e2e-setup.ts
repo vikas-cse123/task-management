@@ -11,6 +11,7 @@ import {
   MongoEmployeeDirectory,
   mongoose,
   recordAudit,
+  seedOfficialTemplates,
   seedReferenceData,
   upsertClientTeamMember,
 } from '@interscale/db';
@@ -122,6 +123,7 @@ async function main(): Promise<void> {
 
   await mongoose.connection.dropDatabase();
   await seedReferenceData();
+  const templateSeeds = await seedOfficialTemplates();
 
   const hello = (await database.admin().command({ hello: 1 })) as { setName?: string };
   const auth = createAuth({
@@ -163,6 +165,18 @@ async function main(): Promise<void> {
     throw new Error('E2E setup expected at least two seeded job roles.');
   }
 
+  const roleKeyToId = new Map(roles.map((role) => [role.key, role.id]));
+
+  function roleId(key: string): string {
+    const id = roleKeyToId.get(key);
+
+    if (!id) {
+      throw new Error(`E2E setup expected seeded job role "${key}".`);
+    }
+
+    return id;
+  }
+
   const managerTemp = temporaryPassword();
   const manager = await auth.api.createUser({
     body: {
@@ -174,7 +188,7 @@ async function main(): Promise<void> {
         status: 'active',
         requiresPasswordChange: true,
         jobRoleIds: [],
-        capabilities: ['clients.manage', 'clients.team.manage'],
+        capabilities: ['clients.manage', 'clients.team.manage', 'projects.create_from_template'],
         createdBy: admin.user.id,
       },
     },
@@ -265,11 +279,69 @@ async function main(): Promise<void> {
     },
   });
 
+  const performanceMarketerTemp = temporaryPassword();
+  const performanceMarketer = await auth.api.createUser({
+    body: {
+      email: 'e2e.performance-marketer@test.local',
+      password: performanceMarketerTemp,
+      name: 'E2E Performance Marketer',
+      data: {
+        accessLevel: 'Employee',
+        status: 'active',
+        requiresPasswordChange: true,
+        jobRoleIds: [roleId('performance_marketer')],
+        capabilities: [],
+        createdBy: admin.user.id,
+      },
+    },
+  });
+
+  const scriptWriterTemp = temporaryPassword();
+  const scriptWriter = await auth.api.createUser({
+    body: {
+      email: 'e2e.script-writer@test.local',
+      password: scriptWriterTemp,
+      name: 'E2E Script Writer',
+      data: {
+        accessLevel: 'Employee',
+        status: 'active',
+        requiresPasswordChange: true,
+        jobRoleIds: [roleId('video_ad_script_writer')],
+        capabilities: [],
+        createdBy: admin.user.id,
+      },
+    },
+  });
+
+  const videoEditorTemp = temporaryPassword();
+  const videoEditor = await auth.api.createUser({
+    body: {
+      email: 'e2e.video-editor@test.local',
+      password: videoEditorTemp,
+      name: 'E2E Video Editor',
+      data: {
+        accessLevel: 'Employee',
+        status: 'active',
+        requiresPasswordChange: true,
+        jobRoleIds: [roleId('video_editor')],
+        capabilities: [],
+        createdBy: admin.user.id,
+      },
+    },
+  });
+
   await setPasswordViaHttp('e2e.manager@test.local', managerTemp, MANAGER_PASSWORD);
   await setPasswordViaHttp('e2e.employee@test.local', employeeTemp, EMPLOYEE_PASSWORD);
   await setPasswordViaHttp('e2e.unassigned@test.local', unassignedTemp, EMPLOYEE_PASSWORD);
   await setPasswordViaHttp('e2e.editor@test.local', editorTemp, EMPLOYEE_PASSWORD);
   await setPasswordViaHttp('e2e.marketer@test.local', marketerTemp, EMPLOYEE_PASSWORD);
+  await setPasswordViaHttp(
+    'e2e.performance-marketer@test.local',
+    performanceMarketerTemp,
+    EMPLOYEE_PASSWORD,
+  );
+  await setPasswordViaHttp('e2e.script-writer@test.local', scriptWriterTemp, EMPLOYEE_PASSWORD);
+  await setPasswordViaHttp('e2e.video-editor@test.local', videoEditorTemp, EMPLOYEE_PASSWORD);
 
   const directory = new MongoEmployeeDirectory();
   const clientA = await createClientRecord(
@@ -307,6 +379,27 @@ async function main(): Promise<void> {
     admin.user.id,
     clientA.id,
     marketer.user.id,
+    { isActive: true },
+    teamDeps,
+  );
+  await upsertClientTeamMember(
+    admin.user.id,
+    clientA.id,
+    performanceMarketer.user.id,
+    { isActive: true },
+    teamDeps,
+  );
+  await upsertClientTeamMember(
+    admin.user.id,
+    clientA.id,
+    scriptWriter.user.id,
+    { isActive: true },
+    teamDeps,
+  );
+  await upsertClientTeamMember(
+    admin.user.id,
+    clientA.id,
+    videoEditor.user.id,
     { isActive: true },
     teamDeps,
   );
@@ -364,11 +457,36 @@ async function main(): Promise<void> {
           password: EMPLOYEE_PASSWORD,
           userId: marketer.user.id,
         },
+        performanceMarketer: {
+          email: 'e2e.performance-marketer@test.local',
+          password: EMPLOYEE_PASSWORD,
+          userId: performanceMarketer.user.id,
+        },
+        scriptWriter: {
+          email: 'e2e.script-writer@test.local',
+          password: EMPLOYEE_PASSWORD,
+          userId: scriptWriter.user.id,
+        },
+        videoEditor: {
+          email: 'e2e.video-editor@test.local',
+          password: EMPLOYEE_PASSWORD,
+          userId: videoEditor.user.id,
+        },
         clientA: { id: clientA.id, name: clientA.name },
         clientB: { id: clientB.id, name: clientB.name },
         projectA: { id: projectA.id, name: projectA.name },
         jobRoleA: { id: roleA.id, name: roleA.name },
         jobRoleB: { id: roleB.id, name: roleB.name },
+        templates: {
+          campaign: {
+            id: templateSeeds.templateIds.destination_meta_ads_campaign ?? '',
+            key: 'destination_meta_ads_campaign',
+          },
+          onboarding: {
+            id: templateSeeds.templateIds.client_onboarding_technical_setup ?? '',
+            key: 'client_onboarding_technical_setup',
+          },
+        },
       },
       null,
       2,

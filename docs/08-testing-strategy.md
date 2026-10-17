@@ -89,21 +89,24 @@ against a self-hosted or explicitly provided test instance via
 
 ## 5. Later-phase checklists
 
-Task/subtask, dependency, notification, and meeting test suites are defined in
-§19 and are executed in Phases 2–6. API tests use Supertest; E2E flows use
+Task/subtask, dependency and template test suites are defined in §19 and are
+executed in Phases 2–4 (see the phase test records in §7–§9). Notification and
+meeting suites run in Phases 5–6. API tests use Supertest; E2E flows use
 Playwright.
 
 ## 6. Playwright end-to-end procedure (Steps 6, 12, 18)
 
 E2E runs against the API + SPA on an **isolated** database that is rebuilt
 before every run: Phase 1 ended 18/18 green, Phase 2 ended 34/34 green,
-Phase 3 ends 54/54 green (all including full regression).
+Phase 3 ended 54/54 green, Phase 4 ends 69/69 green (all including full
+regression).
 
 Spec files (`apps/web/e2e`) cover the Phase 1 scenarios (auth, employees,
 clients, permissions, responsive, workflow, security, settings), the Phase 2
-scenarios (`phase2-*`: projects, tasks, workflow, security, responsive) and
+scenarios (`phase2-*`: projects, tasks, workflow, security, responsive),
 the Phase 3 scenarios (`phase3-*`: dependencies, progression, safety,
-security, UI, responsive, workflow).
+security, UI, responsive, workflow) and the Phase 4 scenarios (`phase4-*`:
+templates, generation, security).
 
 Tests run serially (`workers: 1`) because scenarios share fixture users;
 mutating scenarios use fresh entities. Fixtures expire after one run
@@ -184,3 +187,32 @@ on artifact writes); rebuild fixtures before every full run (stale
 designations leak across runs); serialize multi-mutation flows (wait for
 each edge); narrow paginated lists with search; always `expect` on HTTP
 setup calls.
+
+## 9. Phase 4 test record (Steps 19–24)
+
+Unit/integration (all executed, 0 skipped; MongoDB transaction tests run
+against the isolated replica set — not skipped): shared 14, db 159
+(template validation/expansion/deadline/versioning/instantiation plus
+Phase 1–3 suites), api 70 (templates and generation API plus Phase 1–3
+suites). Total 243 passed, 0 failed, 0 skipped.
+
+E2E (Playwright/Chromium, production preview bundle + isolated
+`interscale_e2e` database, **69/69 green** including the full Phase 1–3
+regression): the Phase 4 scenarios — Admin template list/create/editor/
+save-draft/validate/publish/archive, published-version immutability, invalid
+graph rejection, Manager published-only visibility, manager capability and
+scope enforcement, server-validated preview, destination-specific generation
+(Singapore/Goa), generated tasks/subtasks/roles/approvers/dependencies,
+script blocked until brief Done, edit blocked until script approval, launch
+blocked until required prerequisites Done, multiple video ads and matching
+Meta ad-copy count, optional static/carousel not forced, onboarding access
+prerequisites, CRM master data waits for personalization, final validation
+waits for required tasks, relative-deadline calculation and past-due
+warnings, missing-assignment visibility, idempotent replay/conflict,
+cross-client isolation and mobile wizard views.
+
+Fixtures (`apps/api/src/scripts/e2e-setup.ts`) seed the official templates and
+add the flow users the wizard needs (`performanceMarketer`, `scriptWriter`,
+`videoEditor`) with their client memberships; the `manager` fixture is granted
+`projects.create_from_template`. Fixtures expire after one run (passwords
+change), so rebuild before every run (procedure in §6).

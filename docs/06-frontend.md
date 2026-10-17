@@ -96,4 +96,24 @@ department/job-role routes). No Phase 2 functionality is rendered anywhere.
 | Overview (expanded) | `/` | Scoped summary: clients, projects, due today, overdue, blocked, approvals, completed; workload by employee/role (non-employees); personal counts for employees. |
 
 Approvals and My Tasks appear for every role (queues are simply empty without
-applicable work). Meetings and Templates stay hidden until their phases.
+applicable work). Meetings stay hidden until Phase 6.
+
+## 9. Steps 19–23 screens (Phase 4)
+
+| Screen | Route | Access |
+| --- | --- | --- |
+| Templates list | `/templates` | Managers and Admins (route `RequireManagerOrAdmin`); Admins see drafts/archived and creation, Managers see published only. |
+| Template detail / editor | `/templates/:id` | Same; Admin-only node editor, save draft, validate, publish and archive actions. |
+| Project creation wizard | within `/projects` | `projects.create_from_template` holders within client scope; template, client, destination, creative types, video-ad count, manager, role/deadline overrides, live preview. |
+
+- The Templates navigation link is rendered only for Managers and Admins.
+- The wizard collects inputs, calls the server-validated preview
+  (`POST /projects/from-template/preview`) and creation
+  (`POST /projects/from-template`), and surfaces warnings (missing assignments,
+  missing approvers, empty variables, deadline issues) before and after
+  creation.
+- The template editor edits the persisted draft (nodes, one-level subtasks,
+  per-node role/approval/assignment/deadline rules, `{{variable}}` titles and
+  prerequisite edges); Validate and Publish operate on the saved draft, so
+  content must be saved first. Editor validation errors are shown inline.
+- Meetings remain hidden until Phase 6.

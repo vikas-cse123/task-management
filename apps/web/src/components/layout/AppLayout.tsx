@@ -3,6 +3,7 @@ import {
   Briefcase,
   ClipboardCheck,
   ClipboardList,
+  FileText,
   FolderKanban,
   LayoutDashboard,
   LogOut,
@@ -32,6 +33,7 @@ export function AppLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const isAdmin = user?.accessLevel === 'Admin';
+  const canSeeTemplates = user !== null && user.accessLevel !== 'Employee';
 
   const handleSignOut = async (): Promise<void> => {
     setSigningOut(true);
@@ -67,6 +69,12 @@ export function AppLayout() {
         <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
         Approvals
       </NavLink>
+      {canSeeTemplates ? (
+        <NavLink to="/templates" className={navLinkClass} onClick={() => setMenuOpen(false)}>
+          <FileText className="h-4 w-4" aria-hidden="true" />
+          Templates
+        </NavLink>
+      ) : null}
       {isAdmin ? (
         <NavLink to="/team" className={navLinkClass} onClick={() => setMenuOpen(false)}>
           <Users className="h-4 w-4" aria-hidden="true" />

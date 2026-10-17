@@ -162,3 +162,40 @@ boundary (failures are 422), optimistic concurrency via `expectedVersion`
 | GET | `/api/v1/my-tasks` | authenticated | Own assignments with project/client/parent names. |
 | GET | `/api/v1/approvals/queue` | authenticated | Awaiting Approval where caller is approver, scope-filtered. |
 | GET | `/api/v1/dashboard/summary` | authenticated | Role-scoped aggregates; never leaks unauthorized work. |
+
+## 7. Endpoints implemented (Phase 4)
+
+Conventions: template administration is **Admin-only**; Managers may only read
+published templates and generate projects within their authorized client scope
+(need the `projects.create_from_template` capability; Admins implicitly hold it).
+Generation endpoints are mounted under `/projects/from-template*` **before**
+`/projects/:id`. Zod failures are 422; optimistic-concurrency mismatches are 409.
+
+### Templates (Admin-managed; Managers read published only)
+
+| Method | Path | Access | Notes |
+| --- | --- | --- | --- |
+| GET | `/api/v1/templates` | Admin (all), Manager (published only) | Filters: `status`, `type`, `search`; cursor pagination. |
+| POST | `/api/v1/templates` | Admin | Creates a template plus version-1 draft; optional initial content. |
+| GET | `/api/v1/templates/:id` | Admin or published | Detail with version list and draft pointer; non-Admins see published only. |
+| PATCH | `/api/v1/templates/:id` | Admin | Name, description, type (never the stable `key`). |
+| PUT | `/api/v1/templates/:id/draft` | Admin | Replaces the full draft content (nodes + dependencies). |
+| POST | `/api/v1/templates/:id/draft` | Admin | Ensures a draft exists (clones the published version if needed); returns it. |
+| POST | `/api/v1/templates/:id/validate` | Admin | Runs graph validation on the persisted draft (or a given version); returns issues. |
+| POST | `/api/v1/templates/:id/publish` | Admin | Publishes the draft; archives the previous published version; opens a fresh draft. |
+| POST | `/api/v1/templates/:id/archive` | Admin | Retires a template (reason required); hidden from project creation. |
+| GET | `/api/v1/templates/:id/versions/:version` | Admin or published | Full node/dependency content of one version. |
+
+### Project generation from a template
+
+| Method | Path | Access | Notes |
+| --- | --- | --- | --- |
+| POST | `/api/v1/projects/from-template/preview` | `projects.create_from_template` + client scope | Server-validated preview built from the exact expansion used at creation. |
+| POST | `/api/v1/projects/from-template` | `projects.create_from_template` + client scope | Atomically creates the project graph; 201 with `idempotentReplay`. |
+
+`POST /projects/from-template` requires an `idempotencyKey` (8–120 chars).
+Replaying the same key with an equivalent payload returns the original project
+as `idempotentReplay: true`; the same key with a different payload returns 409
+`CONFLICT`. Managers generating for an out-of-scope client receive 404 (IDOR
+protection). The response envelope is
+`{ data: { project: { id, name, … }, templateId, templateVersion, taskCount, subtaskCount, dependencyCount, warnings, idempotentReplay } }`.

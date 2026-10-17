@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
 import { config as loadEnv } from 'dotenv';
 import { connectToDatabase, disconnectFromDatabase } from '../connection';
+import { seedOfficialTemplates } from './official-templates';
 import { seedReferenceData } from './reference-data';
 
 loadEnv({
@@ -24,6 +25,11 @@ async function main(): Promise<void> {
     const summary = await seedReferenceData();
     console.log(
       `Reference data seeded: ${summary.departments} departments, ${summary.jobRoles} job roles.`,
+    );
+
+    const templates = await seedOfficialTemplates();
+    console.log(
+      `Official templates seeded: ${templates.created} created, ${templates.skipped} already present.`,
     );
   } finally {
     await disconnectFromDatabase();

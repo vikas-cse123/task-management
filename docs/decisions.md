@@ -125,6 +125,58 @@ listed separately and must **not** be silently decided.
   state mid-test; preview has no watcher and no StrictMode double-mounts.
   Serialized multi-add flows wait for each edge before continuing.
 
+## Resolved during Phase 4 (Steps 19–24)
+
+- **Templates are a workspace asset, never client-bound.** A template's stable
+  `key` is its identity; binding to a client happens only at instantiation.
+  Template management stays Admin-only; Managers read published templates only.
+- **Version immutability by construction.** Nodes and dependencies are
+  version-scoped, so editing always targets the single `draft` version.
+  Publishing flips the draft to `published`, archives the previous published
+  version, and opens a fresh empty draft at `version + 1`. A unique partial
+  index enforces at most one published version per template, so historical
+  projects remain reproducible.
+- **Validation gates publish and instantiation.** A pure graph validator runs on
+  the persisted draft before publish and again before preview/creation:
+  duplicate/unknown node keys, one-level nesting, subtask-of-repeated-parent
+  consistency, self/duplicate/parent-child edges, cycle detection, unknown or
+  misplaced `{{variable}}` placeholders, and approval/approver-rule consistency.
+- **Relative deadlines are calendar-day, timezone-aware, and never invented.**
+  `N` days after an anchor (project start or target) at a configured local
+  `HH:mm` in the IST display timezone; no weekend/holiday assumptions. Missing
+  anchors, past-due results, and child-after-parent deadlines become visible
+  warnings; deadline overrides are accepted per node.
+- **Assignment precedence (per node `assignmentRule`):** explicit role override
+  (validated active member holding the role) → primary designated employee for
+  the client/role (re-validated for eligibility) → visible `needs_assignment`
+  warning (never an arbitrary auto-assignment). `project_manager` rule assigns
+  the selected Project Manager; `none` leaves the task unassigned.
+- **Approver resolution:** an approval-required node resolves its approver to
+  the Project Manager (who already holds approval authority); unresolved
+  approvers become visible `needs_approver` warnings. Approval is never granted
+  to an employee without it.
+- **Atomic, idempotent generation.** The whole project graph (project, tasks,
+  subtasks, real Phase 3 `taskDependencies`, idempotency record, audit entry) is
+  written in one replica-set transaction. A durable `idempotencyKey` replays the
+  original result for an equivalent payload and returns 409 for a different
+  payload under the same key. Preview and creation share one deterministic
+  expansion function, so they cannot drift.
+- **Repeated creative groups.** Nodes sharing a `repeatGroup` expand once per
+  selected creative instance (`videoAdCount`); `{{adIndex}}` is only valid inside
+  a repeat group and is blank for single-instance groups. Optional static/
+  carousel groups generate only when their creative type is selected.
+- **Official templates seeded idempotently by key** (never overwriting Admin
+  edits): `destination_meta_ads_campaign` and `client_onboarding_technical_setup`.
+- **Generated downstream integration is preserved:** generation creates real
+  Phase 3 dependency records, so Phase 3 auto-unlocking and Phase 2 approvals
+  apply unchanged; generation never mutates previously created projects.
+- **E2E remains serial on isolated infrastructure** (`workers: 1`, rebuilt
+  `interscale_e2e` fixtures, production `vite preview`).
+- **Phase 5 notification integration point (not implemented):** generation emits
+  no notifications; readiness/workflow events remain the durable hook a later
+  notification phase consumes. No WhatsApp delivery, templates, reminders or
+  retries exist yet.
+
 ## Unresolved — do not invent (see 00 §22)
 
 1. Exact default owner for the Creative Lead/Manager parent video task.
@@ -168,6 +220,10 @@ listed separately and must **not** be silently decided.
 - Phase 3 E2E: 54/54 green (Phase 1/2 regression + 30 required scenarios and
   security checks) on the isolated `interscale_e2e` database; unit/integration
   totals: shared 14, db 113, api 58 — 0 failed, 0 skipped.
+- Phase 4 E2E: 69/69 green (Phase 1–3 regression + Phase 4 template/generation
+  scenarios and security checks) on the isolated `interscale_e2e` database;
+  unit/integration totals: shared 14, db 159, api 70 — 0 failed, 0 skipped
+  (MongoDB transaction tests executed).
 
 ## Technical verifications still required
 

@@ -15,11 +15,18 @@ export interface E2EFixtures {
   unassigned: E2EAccount;
   editor: E2EAccount;
   marketer: E2EAccount;
+  performanceMarketer: E2EAccount;
+  scriptWriter: E2EAccount;
+  videoEditor: E2EAccount;
   clientA: { id: string; name: string };
   clientB: { id: string; name: string };
   projectA: { id: string; name: string };
   jobRoleA: { id: string; name: string };
   jobRoleB: { id: string; name: string };
+  templates: {
+    campaign: { id: string; key: string };
+    onboarding: { id: string; key: string };
+  };
 }
 
 let cached: E2EFixtures | null = null;

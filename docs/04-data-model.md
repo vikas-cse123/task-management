@@ -1,23 +1,28 @@
-# 04 — Data Model (Phases 1–2)
+# 04 — Data Model (Phases 1–4)
 
 Authoritative requirement: [00-product-requirements.md](./00-product-requirements.md)
 §16 and §25.4. Phase 1 implements identity, departments, job roles, users,
 clients, and client role assignments. Phase 2 adds `projects`, `tasks` and
-`taskActivities`. Later collections are listed so decisions remain compatible.
+`taskActivities`. Phase 3 adds `taskDependencies`. Phase 4 adds `templates`,
+`templateVersions`, `templateNodes`, `templateDependencies` and
+`projectGenerations`. Later collections are listed so decisions remain
+compatible.
 
 Better Auth manages its own authentication collections through the MongoDB
 adapter. Do not create redundant identity records. The reference strategy is
 recorded in [adr/0004-better-auth-identity-strategy.md](./adr/0004-better-auth-identity-strategy.md).
 
-> **Implementation status (updated after the shared-contracts / database-foundation step).**
-> Implemented in `packages/db`: `departments`, `jobRoles`, `clients`,
-> `clientTeamMembers`, `clientRoleAssignments`, `auditLogs`. The application
-> `users` profile collection is **deferred** to the authentication step (the
-> profile-store decision is open item 10). Until then, applications reference
-> users by Better Auth `ObjectId` and validate assignable employees through the
-> `EmployeeDirectory` abstraction.
+> **Implementation status (updated after Phase 4).** All Phase 1–4 collections
+> below are implemented in `packages/db`: `departments`, `jobRoles`, `clients`,
+> `clientTeamMembers`, `clientRoleAssignments`, `auditLogs`, `projects`,
+> `tasks`, `taskActivities`, `taskDependencies`, `templates`,
+> `templateVersions`, `templateNodes`, `templateDependencies`,
+> `projectGenerations`. The application user profile lives on the Better Auth
+> `user` document (ADR 0005); applications reference users by Better Auth
+> `ObjectId` and validate assignable employees through the `EmployeeDirectory`
+> abstraction.
 
-## 1. Phase 1 collections
+## 1. Core collections (Phases 1–3)
 
 ### users (deferred to the authentication step)
 Application profile linked to the Better Auth identity.
@@ -195,24 +200,134 @@ log which receives parallel entries for critical changes.
 
 Index: `{ taskId, createdAt }`.
 
-## 2. Later-phase collections (design-compatible, not implemented yet)
+### taskDependencies (Phase 3)
 
-`taskDependencies`, `templates`,
-`templateNodes`, `meetings`, `meetingActionItems`, `notificationOutbox`,
-`notificationLogs`.
+Real prerequisite edges between tasks in one project. Version-scoped edge keys
+from a template become real `taskDependencies` at instantiation; there is no
+parallel dependency engine.
+
+| Field | Notes |
+| --- | --- |
+| `projectId` | Reference to `projects`. |
+| `predecessorTaskId` / `successorTaskId` | The successor waits on the predecessor. |
+| `createdBy` / `updatedBy` | Actors. |
+| `createdAt` / `updatedAt` | Timestamps. |
+
+Indexes: unique `{ predecessorTaskId, successorTaskId }`,
+`{ projectId, successorTaskId }`, `{ projectId, predecessorTaskId }`. Same
+project, no self-edge, no duplicate, no cycle, no child-to-parent; graph edits
+bump `projects.dependencyVersion` inside the same transaction.
+
+## 2. Phase 4 collections (templates and generation)
+
+### templates
+
+An Admin-managed, reusable definition of a whole project workflow. Identity is
+the stable `key`, never the editable name. A template is never bound to a client
+in the definition — binding happens only at instantiation.
+
+| Field | Notes |
+| --- | --- |
+| `key` | Stable unique identifier (lowercase snake_case, immutable). |
+| `name` | Display name (editable). |
+| `description` | Nullable. |
+| `type` | `campaign` \| `onboarding` \| `general`. |
+| `status` | `draft` \| `published` \| `archived`. |
+| `currentPublishedVersion` | Number of the newest published version, or null. |
+| `createdBy` / `updatedBy` | Actors. |
+| `createdAt` / `updatedAt` | Timestamps. |
+
+Indexes: unique `key`, `status`, `type`. Optimistic concurrency (`__v`).
+
+### templateVersions
+
+One version of a template. Nodes and dependencies live in version-scoped
+collections keyed by the version, so a published version is **immutable by
+construction** — editing always targets the single `draft` version.
+
+| Field | Notes |
+| --- | --- |
+| `templateId` | Reference to `templates`. |
+| `version` | Sequential, starting at 1. |
+| `status` | `draft` \| `published` \| `archived`. |
+| `notes` | Optional publish note (≤1000). |
+| `basedOnVersion` | Version a draft was cloned from (nullable). |
+| `createdBy` / `updatedBy` / `publishedBy` | Actors. |
+| `publishedAt` | Nullable timestamp. |
+| `createdAt` / `updatedAt` | Timestamps. |
+
+Indexes: unique `{ templateId, version }`; unique **partial** `{ templateId }`
+where `status: 'published'` → at most one published version per template;
+`{ templateId, status }`. Optimistic concurrency (`__v`).
+
+### templateNodes
+
+A reusable task/subtask definition (one level of nesting only). Nodes are
+definitions, never executable tasks.
+
+| Field | Notes |
+| --- | --- |
+| `templateId` / `templateVersionId` / `version` | Owning template and version. |
+| `nodeKey` | Stable, unique within the version. |
+| `parentNodeKey` | Nullable; one-level subtask nesting. |
+| `titleTemplate` / `descriptionTemplate` | Contain `{{variable}}` placeholders. |
+| `requiredJobRoleKey` | Nullable functional job role. |
+| `priority` | Task priority (default `medium`). |
+| `approvalRequired` / `approverResolutionRule` | `project_manager` \| `none`. |
+| `assignmentRule` | `designated` \| `project_manager` \| `none`. |
+| `relativeDueRule` | `{ anchor, offsetDays, timeOfDay }` or null. |
+| `isRequired` | Optional work is generated but not required. |
+| `repeatGroup` | Nodes duplicated once per selected creative instance. |
+| `sopUrl` / `referenceUrl` | Optional links. |
+| `sortOrder` | Display order. |
+
+Indexes: unique `{ templateVersionId, nodeKey }`,
+`{ templateVersionId, sortOrder }`. Optimistic concurrency (`__v`).
+
+### templateDependencies
+
+A prerequisite edge between two template nodes, stored as version-scoped node
+keys. At instantiation the keys map to the new real Task ids.
+
+| Field | Notes |
+| --- | --- |
+| `templateId` / `templateVersionId` / `version` | Owning template and version. |
+| `predecessorNodeKey` / `successorNodeKey` | Edge endpoints. |
+
+Index: unique `{ templateVersionId, predecessorNodeKey, successorNodeKey }`.
+
+### projectGenerations
+
+Durable idempotency record for template-based project generation, written inside
+the same transaction as the project graph.
+
+| Field | Notes |
+| --- | --- |
+| `idempotencyKey` | Globally unique. |
+| `fingerprint` | SHA-256 hash of the normalized request. |
+| `actorId` | Generating user (nullable). |
+| `clientId` / `templateId` / `templateVersion` | Source. |
+| `projectId` | The project created by this request. |
+| `warnings` | Generation warnings snapshot. |
+| `createdAt` / `updatedAt` | Timestamps. |
+
+Indexes: unique `idempotencyKey`, `{ clientId, createdAt }`.
+
+## 3. Later-phase collections (design-compatible, not implemented yet)
+
+`meetings`, `meetingActionItems`, `notificationOutbox`, `notificationLogs`.
 
 Key forward-compatibility decisions:
 
 - `tasks.parentTaskId` is stored nullable so deeper nesting can be introduced
   later; v1 exposes only one subtask level.
-- Dependency endpoints must remain **same-project**; cycles/self/duplicates are
+- Dependency endpoints remain **same-project**; cycles/self/duplicates are
   rejected in application logic.
 - `clientRoleAssignments` keeps client membership separate from primary role
-  mappings, so later automatic assignment can resolve roles without DB
-  redesign.
+  mappings, so automatic assignment can resolve roles without DB redesign.
 - Audit/activity records are append-only and sanitized.
 
-## 3. General database rules
+## 4. General database rules
 
 Explicit schemas, schema validation, ObjectId references where applicable,
 appropriate and unique indexes, short transactions, optimistic concurrency where
